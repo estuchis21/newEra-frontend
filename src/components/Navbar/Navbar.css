@@ -1,0 +1,215 @@
+.navbar {
+
+    width:100%;
+
+    height:80px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:0 50px;
+
+    background:#050505;
+
+    border-bottom:1px solid #9b00ff;
+
+    box-shadow:
+        0 0 15px rgba(155,0,255,0.5);
+
+}
+
+
+
+/* LOGO */
+
+.navbar-logo {
+
+    color:white;
+
+    font-size:28px;
+
+    font-weight:bold;
+
+    text-decoration:none;
+
+    text-shadow:
+        0 0 10px #9b00ff;
+
+}
+
+
+
+
+
+/* MENU */
+
+.navbar-menu {
+
+    display:flex;
+
+    align-items:center;
+
+    gap:35px;
+
+    list-style:none;
+
+    margin:0;
+
+    padding:0;
+
+}
+
+
+
+
+
+/* LINKS */
+
+.navbar-menu a {
+
+    color:white;
+
+    text-decoration:none;
+
+    font-size:17px;
+
+    font-weight:600;
+
+    transition:.3s;
+
+}
+
+
+
+
+
+.navbar-menu a:hover {
+
+
+    color:#c000ff;
+
+
+    text-shadow:
+
+        0 0 10px #9b00ff;
+
+
+}
+
+
+
+
+
+
+/* BOTONES LOGIN REGISTRO */
+
+.navbar-buttons {
+
+
+    display:flex;
+
+    gap:15px;
+
+}
+
+
+
+
+
+.navbar-buttons button {
+
+
+    padding:10px 20px;
+
+    border-radius:8px;
+
+    border:none;
+
+    cursor:pointer;
+
+    font-weight:bold;
+
+}
+
+
+
+
+
+.btn-login {
+
+
+    background:transparent;
+
+    color:white;
+
+    border:1px solid #9b00ff !important;
+
+
+}
+
+
+
+
+
+.btn-register {
+
+
+    background:#9b00ff;
+
+    color:white;
+
+
+}
+
+
+
+
+
+.btn-register:hover {
+
+
+    background:#c000ff;
+
+
+}
+
+
+
+
+
+/* RESPONSIVE */
+
+@media(max-width:768px){
+
+
+    .navbar {
+
+
+        flex-direction:column;
+
+        height:auto;
+
+        gap:20px;
+
+        padding:25px;
+
+
+    }
+
+
+
+    .navbar-menu {
+
+
+        flex-direction:column;
+
+        gap:15px;
+
+
+    }
+
+
+}

@@ -1,0 +1,189 @@
+*{
+
+    margin:0;
+
+    padding:0;
+
+    box-sizing:border-box;
+
+}
+
+body{
+
+    font-family:Arial, Helvetica, sans-serif;
+
+}
+
+.hero{
+
+    height:90vh;
+
+    background:url("/hero.jpg");
+
+    background-size:cover;
+
+    background-position:center;
+
+    position:relative;
+
+}
+
+.overlay{
+
+    background:rgba(0,0,0,.55);
+
+    width:100%;
+
+    height:100%;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    color:white;
+
+    text-align:center;
+
+}
+
+.overlay h1{
+
+    font-size:4rem;
+
+}
+
+.overlay p{
+
+    font-size:1.3rem;
+
+    margin:25px 0;
+
+    width:700px;
+
+}
+
+.overlay button{
+
+    padding:15px 40px;
+
+    border:none;
+
+    border-radius:10px;
+
+    background:#e91e63;
+
+    color:white;
+
+    cursor:pointer;
+
+    font-size:18px;
+
+}
+
+.container{
+
+    width:85%;
+
+    margin:auto;
+
+}
+
+.historia{
+
+    padding:90px 0;
+
+}
+
+.historia h2{
+
+    text-align:center;
+
+    margin-bottom:40px;
+
+    color:#e91e63;
+
+}
+
+.historia p{
+
+    margin-bottom:20px;
+
+    line-height:1.8;
+
+    text-align:justify;
+
+}
+
+.porque{
+
+    background:#fafafa;
+
+    padding:90px 0;
+
+}
+
+.cards{
+
+    display:grid;
+
+    grid-template-columns:repeat(3,1fr);
+
+    gap:30px;
+
+    margin-top:40px;
+
+}
+
+.card{
+
+    background:white;
+
+    padding:35px;
+
+    border-radius:15px;
+
+    box-shadow:0 8px 20px rgba(0,0,0,.1);
+
+}
+
+.card h3{
+
+    color:#e91e63;
+
+    margin-bottom:15px;
+
+}
+
+.cta{
+
+    padding:100px;
+
+    text-align:center;
+
+    background:#e91e63;
+
+    color:white;
+
+}
+
+.cta button{
+
+    margin-top:30px;
+
+    padding:15px 35px;
+
+    border:none;
+
+    background:white;
+
+    color:#e91e63;
+
+    border-radius:10px;
+
+    cursor:pointer;
+
+}
