@@ -16,16 +16,11 @@ body{
 
 .hero{
 
-    height:90vh;
-
+    height:80vh;
     background:url("/hero.jpg");
-
     background-size:cover;
-
     background-position:center;
-
     position:relative;
-
 }
 
 .overlay{
