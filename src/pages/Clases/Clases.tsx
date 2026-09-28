@@ -9,9 +9,7 @@ import "./Clases.css";
 
 
 import {
-    obtenerDisciplina,
     obtenerDisciplinas,
-    crearDisciplina
 } from "../../services/disciplinas.service";
 
 
