@@ -1,6 +1,6 @@
 import "./Home.css";
 
-import video1 from "../../assets/7817370-uhd_2160_4096_25fps.mp4";
+import video1 from "../../assets/7817370-uhd-2160-4096-25fps_HQvysRiE.mp4";
 import video2 from "../../assets/13583133_2160_3840_25fps.mp4";
 import video3 from "../../assets/8929228-hd_1080_1920_30fps.mp4";
 
