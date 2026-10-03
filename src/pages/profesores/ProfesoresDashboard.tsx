@@ -32,6 +32,8 @@ import {
     type Asistencia,
 } from "../../services/asistencia.service";
 
+import {obtenerDisciplinas} from "../../services/disciplinas.service";
+
 
 
 import "./ProfesoresDashboard.css";
@@ -185,6 +187,9 @@ const ProfesorDashboard = () => {
             hora_inicio: "18:00",
             hora_fin: "19:00",
         });
+
+    const [disciplinas, setDisciplinas] = useState<any[]>([]);
+    const [loadingDisciplinas, setLoadingDisciplinas] = useState(false);
 
 
 
@@ -519,6 +524,33 @@ const ProfesorDashboard = () => {
     // CARGAR PROFESOR
 
     // =====================================================
+
+    const getDisciplinas = async () => {
+        try {
+            setLoadingDisciplinas(true);
+
+            const datos = await obtenerDisciplinas();
+
+            console.log("DISCIPLINAS OBTENIDAS:", datos);
+
+            setDisciplinas(
+                Array.isArray(datos)
+                    ? datos
+                    : []
+            );
+
+        } catch (error) {
+            console.error(
+                "Error obteniendo disciplinas:",
+                error
+            );
+
+            setDisciplinas([]);
+
+        } finally {
+            setLoadingDisciplinas(false);
+        }
+    };
 
 
 
@@ -1746,6 +1778,7 @@ const ProfesorDashboard = () => {
 
 
         cargarProfesor();
+        getDisciplinas();
 
 
 
