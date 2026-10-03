@@ -43,6 +43,18 @@ export interface Clase {
     nivel?: string;
 }
 
+export interface Grupos_Alumnos {
+    id_disciplina: number;
+    nivel: string;
+    cupo_max: number;
+    id_profesor: number;
+    horarios: {
+        dia_semana: string;
+        hora_inicio: string;
+        hora_fin: string;
+    }[];
+}
+
 export interface AlumnoClase {
     id_alumno: number;
     nombre: string;
@@ -112,6 +124,18 @@ export const eliminarInscripcion = async (
     return response.data;
 };
 
+// Crear un grupo
+export const crearGrupo = async (
+    grupo: Grupos_Alumnos
+) => {
+
+    const response = await api.post(
+        "/grupos",
+        grupo
+    );
+
+    return response.data;
+};
 
 // =====================================================
 // PROFESOR
