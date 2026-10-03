@@ -2618,7 +2618,7 @@ const ProfesorDashboard = () => {
                                                             key={disciplina.id_disciplina}
                                                             value={disciplina.id_disciplina}
                                                         >
-                                                            {disciplina.nombre}
+                                                            {disciplina.disciplina}
                                                         </option>
                                                     ))
                                                 )}
