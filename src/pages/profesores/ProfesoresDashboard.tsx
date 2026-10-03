@@ -32,7 +32,7 @@ import {
     type Asistencia,
 } from "../../services/asistencia.service";
 
-import {obtenerDisciplinas} from "../../services/disciplinas.service";
+import { obtenerDisciplinas } from "../../services/disciplinas.service";
 
 
 
@@ -529,29 +529,18 @@ const ProfesorDashboard = () => {
         try {
             setLoadingDisciplinas(true);
 
-            const datos = await obtenerDisciplinas();
+            const disciplinasObtenidas = await obtenerDisciplinas();
 
-            console.log("DISCIPLINAS OBTENIDAS:", datos);
+            console.log("DISCIPLINAS OBTENIDAS:", disciplinasObtenidas);
 
-            setDisciplinas(
-                Array.isArray(datos)
-                    ? datos
-                    : []
-            );
+            setDisciplinas(disciplinasObtenidas);
 
         } catch (error) {
-            console.error(
-                "Error obteniendo disciplinas:",
-                error
-            );
-
-            setDisciplinas([]);
-
+            console.error("Error obteniendo disciplinas:", error);
         } finally {
             setLoadingDisciplinas(false);
         }
     };
-
 
 
     const cargarProfesor = async () => {
@@ -2613,11 +2602,26 @@ const ProfesorDashboard = () => {
                                                         Number(e.target.value)
                                                     )
                                                 }
+                                                disabled={loadingDisciplinas}
                                             >
-                                                <option value={1}>Natación</option>
-                                                <option value={2}>Yoga</option>
-                                                <option value={3}>Pilates</option>
-                                                <option value={4}>Funcional</option>
+                                                {loadingDisciplinas ? (
+                                                    <option value="">
+                                                        Cargando disciplinas...
+                                                    </option>
+                                                ) : disciplinas.length === 0 ? (
+                                                    <option value="">
+                                                        No hay disciplinas disponibles
+                                                    </option>
+                                                ) : (
+                                                    disciplinas.map((disciplina) => (
+                                                        <option
+                                                            key={disciplina.id_disciplina}
+                                                            value={disciplina.id_disciplina}
+                                                        >
+                                                            {disciplina.nombre}
+                                                        </option>
+                                                    ))
+                                                )}
                                             </select>
                                         </div>
 
