@@ -391,6 +391,193 @@ body {
     border-color: #9ca3af;
 }
 
+.outline-button:disabled {
+    opacity: 0.55;
+
+    cursor: not-allowed;
+}
+
+
+/* =====================================================
+   CREAR GRUPO
+===================================================== */
+
+.create-group-form {
+    width: 100%;
+
+    padding: 24px;
+
+    margin-bottom: 24px;
+
+    border: 1px solid #e5e7eb;
+
+    border-radius: 14px;
+
+    background: #fafafa;
+}
+
+.create-group-form h3 {
+    margin: 0 0 20px;
+
+    color: #111827;
+
+    font-size: 18px;
+
+    font-weight: 700;
+}
+
+
+/* CONTENEDOR DE CAMPOS */
+
+.create-group-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 18px;
+}
+
+
+/* CAMPO */
+
+.create-group-field {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 7px;
+}
+
+.create-group-field.full-width {
+    grid-column: 1 / -1;
+}
+
+
+/* LABEL */
+
+.create-group-field label {
+    color: #374151;
+
+    font-size: 13px;
+
+    font-weight: 600;
+}
+
+
+/* INPUTS Y SELECTS */
+
+.create-group-field input,
+.create-group-field select {
+    width: 100%;
+
+    min-height: 43px;
+
+    padding: 10px 12px;
+
+    border: 1px solid #d1d5db;
+
+    border-radius: 9px;
+
+    background: white;
+
+    color: #111827;
+
+    font-family: inherit;
+
+    font-size: 13px;
+
+    outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+
+/* FOCUS */
+
+.create-group-field input:focus,
+.create-group-field select:focus {
+    border-color: #6b7280;
+
+    box-shadow:
+        0 0 0 3px rgba(107, 114, 128, 0.12);
+}
+
+
+/* DISABLED */
+
+.create-group-field input:disabled,
+.create-group-field select:disabled {
+    background: #f3f4f6;
+
+    color: #9ca3af;
+
+    cursor: not-allowed;
+}
+
+
+/* PLACEHOLDER */
+
+.create-group-field input::placeholder {
+    color: #9ca3af;
+}
+
+
+/* HORARIOS */
+
+.create-group-time-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 14px;
+}
+
+
+/* BOTONES DEL FORMULARIO */
+
+.create-group-actions {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: flex-end;
+
+    gap: 10px;
+
+    margin-top: 22px;
+
+    padding-top: 20px;
+
+    border-top: 1px solid #e5e7eb;
+}
+
+
+/* BOTÓN CREAR */
+
+.create-group-submit {
+    min-width: 130px;
+}
+
+
+/* ESTADO DE CARGA */
+
+.create-group-loading {
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    color: #6b7280;
+
+    font-size: 13px;
+}
+
 
 /* =====================================================
    STATS
@@ -490,6 +677,7 @@ body {
     color: #4b5563;
 
     font-size: 11px;
+
     font-weight: 600;
 }
 
@@ -708,6 +896,7 @@ body {
     color: #374151;
 
     font-size: 16px;
+
     font-weight: 700;
 }
 
@@ -1087,9 +1276,17 @@ body {
 
     .attendance-actions {
         grid-column: 2 / 4;
+
         justify-content: flex-end;
     }
 
+    .create-group-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .create-group-field.full-width {
+        grid-column: auto;
+    }
 }
 
 
@@ -1198,6 +1395,33 @@ body {
     }
 
 
+    /* CREAR GRUPO */
+
+    .create-group-form {
+        padding: 18px;
+    }
+
+    .create-group-grid {
+        grid-template-columns: 1fr;
+
+        gap: 14px;
+    }
+
+    .create-group-time-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .create-group-actions {
+        flex-direction: column-reverse;
+
+        align-items: stretch;
+    }
+
+    .create-group-actions button {
+        width: 100%;
+    }
+
+
     /* ATTENDANCE */
 
     .attendance-item {
@@ -1295,6 +1519,15 @@ body {
 
     .status {
         width: 100%;
+    }
+
+    .create-group-form {
+        padding: 15px;
+    }
+
+    .create-group-field input,
+    .create-group-field select {
+        min-height: 45px;
     }
 
 }
