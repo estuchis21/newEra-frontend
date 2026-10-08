@@ -9,6 +9,7 @@ import ProfesoresDashboard from "../pages/profesores/ProfesoresDashboard";
 import Navbar from "../components/Navbar/Navbar";
 import RecuperarPassword from "../pages/recuperar-password/RecuperarPassword";
 import ResetPassword from "../pages/recuperar-password/ResetPassword";
+import AdministracionDashboard from "../pages/administracion/AdministracionDashboard";
 
 export default function AppRoutes() {
 
@@ -51,6 +52,10 @@ export default function AppRoutes() {
                 />
                 <Route path="/recuperar-password" element={<RecuperarPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route
+                    path="/administracion"
+                    element={<AdministracionDashboard />}
+                />
             </Routes>
 
         </BrowserRouter>
