@@ -38,7 +38,7 @@ import {
     obtenerHorariosGrupo,
 } from "../../services/horarios.service";
 
-import "./ProfesoresDashboard.css";
+import "./ProfesoresDashboard.css"
 
 
 // ============================================================
