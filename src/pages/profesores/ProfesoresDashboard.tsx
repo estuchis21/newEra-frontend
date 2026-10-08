@@ -38,7 +38,7 @@ import {
     obtenerHorariosGrupo,
 } from "../../services/horarios.service";
 
-import "./ProfesoresDashboard.css"
+import "./ProfesoresDashboard.css";
 
 
 // ============================================================
@@ -684,12 +684,6 @@ const ProfesorDashboard = () => {
                         async (grupo) => {
 
                             try {
-
-                                /*
-                                 * Buscamos clases del grupo
-                                 * y posteriormente alumnos
-                                 * de cada clase.
-                                 */
 
                                 const clasesGrupo =
                                     clases.filter(
@@ -1799,8 +1793,6 @@ const ProfesorDashboard = () => {
                             </div>
 
 
-                            {/* ESTADÍSTICAS */}
-
                             <div className="stats-grid">
 
                                 <div className="stat-card">
@@ -1858,8 +1850,6 @@ const ProfesorDashboard = () => {
 
                             </div>
 
-
-                            {/* RESUMEN */}
 
                             <div
                                 className="dashboard-card"
@@ -1943,8 +1933,6 @@ const ProfesorDashboard = () => {
 
                             </div>
 
-
-                            {/* ACCIONES RÁPIDAS */}
 
                             <div
                                 className="dashboard-card"
@@ -2086,8 +2074,6 @@ const ProfesorDashboard = () => {
 
                             </div>
 
-
-                            {/* FORMULARIO */}
 
                             {mostrarFormularioGrupo && (
 
@@ -2393,8 +2379,6 @@ const ProfesorDashboard = () => {
                             )}
 
 
-                            {/* LISTADO */}
-
                             {loadingGrupos ? (
 
                                 <div className="loading">
@@ -2502,8 +2486,18 @@ const ProfesorDashboard = () => {
                                                     </p>
 
 
-                                                    {horarios.length >
-                                                        0 && (
+                                                    {/* =================================================
+                                                        HORARIOS
+                                                    ================================================= */}
+
+                                                    {loadingHorarios ? (
+
+                                                        <div className="loading">
+                                                            Cargando horarios...
+                                                        </div>
+
+                                                    ) : horarios.length >
+                                                        0 ? (
 
                                                         <div className="group-schedule">
 
@@ -2545,7 +2539,7 @@ const ProfesorDashboard = () => {
 
                                                         </div>
 
-                                                    )}
+                                                    ) : null}
 
 
                                                     <button
@@ -2771,7 +2765,6 @@ const ProfesorDashboard = () => {
                                                 </button>
 
                                             </div>
-
                                         ),
                                     )}
 
@@ -2781,8 +2774,6 @@ const ProfesorDashboard = () => {
 
                         </div>
 
-
-                        {/* ALUMNOS DE CLASE */}
 
                         {claseSeleccionada && (
 
@@ -3342,7 +3333,6 @@ const ProfesorDashboard = () => {
                                             </button>
 
                                         </div>
-
                                     ),
                                 )}
 
