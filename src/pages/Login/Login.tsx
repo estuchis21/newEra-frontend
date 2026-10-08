@@ -43,6 +43,14 @@ export default function Login() {
         confirmButtonColor: "#9b00ff"
       });
 
+<<<<<<< HEAD
+=======
+      // ROL 1 = ADMINISTRADOR
+      if (usuarioLogueado.id_rol === 1) {
+        navigate("/administracion");
+      }
+
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
       // ROL 2 = ALUMNO
       if (usuarioLogueado.id_rol === 2) {
         navigate("/alumno");

@@ -15,8 +15,11 @@ import {
 
 
 import "./AlumnoDashboard.css";
+<<<<<<< HEAD
 import { exportarCSV, fechaLocal, estadoNormalizado } from "../../utils/exportarCsv";
 import { obtenerResumenCreditos, type ResumenCreditos } from "../../services/creditos.service";
+=======
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
 
 
@@ -128,12 +131,15 @@ export default function AlumnoDashboard() {
 
   const [seccion, setSeccion] = useState("inicio");
 
+<<<<<<< HEAD
   const [filtroEstadoAsistencia, setFiltroEstadoAsistencia] = useState("todos");
   const [resumenCreditos, setResumenCreditos] = useState<ResumenCreditos>({ saldos: [], movimientos: [] });
   const [loadingCreditos, setLoadingCreditos] = useState(false);
   const [errorCreditos, setErrorCreditos] = useState("");
   const [busquedaGrupo, setBusquedaGrupo] = useState("");
 
+=======
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
 
   // =====================================================
@@ -270,6 +276,7 @@ export default function AlumnoDashboard() {
 
 
 
+<<<<<<< HEAD
   // =====================================================
   // CARGAR RESUMEN DE CRÉDITOS
   // =====================================================
@@ -298,6 +305,8 @@ export default function AlumnoDashboard() {
     return () => { cancelado = true; };
   }, [idAlumno]);
 
+=======
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
   useEffect(() => {
 
 
@@ -1835,6 +1844,7 @@ export default function AlumnoDashboard() {
 
 
           <button
+<<<<<<< HEAD
             className={seccion === "creditos" ? "active" : ""}
             onClick={() => setSeccion("creditos")}
             type="button"
@@ -1862,6 +1872,8 @@ export default function AlumnoDashboard() {
           </button>
 
           <button
+=======
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
             className={
 
@@ -1963,12 +1975,15 @@ export default function AlumnoDashboard() {
 
                 "Mis grupos"}
 
+<<<<<<< HEAD
               {seccion === "calendario" && "Mi calendario"}
 
               {seccion === "creditos" && "Mis créditos"}
 
               {seccion === "reportes" && "Mis reportes"}
 
+=======
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
 
               {seccion === "asistencia" &&
@@ -2783,6 +2798,7 @@ export default function AlumnoDashboard() {
 
                   </p>
 
+<<<<<<< HEAD
                   <div className="dashboard-filters" style={{display:"flex", gap:"12px", flexWrap:"wrap", marginTop:"12px"}}>
                     <label>
                       Estado de asistencia
@@ -2799,6 +2815,8 @@ export default function AlumnoDashboard() {
                     })))}>Exportar CSV</button>
                   </div>
 
+=======
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
 
                 </div>
@@ -2945,10 +2963,14 @@ export default function AlumnoDashboard() {
 
 
 
+<<<<<<< HEAD
                       {asistencias.filter((asistencia) => {
                         if (filtroEstadoAsistencia === "todos") return true;
                         return estadoNormalizado(asistencia.estado).includes(filtroEstadoAsistencia);
                       }).map(
+=======
+                      {asistencias.map(
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
                         (asistencia) => (
 
@@ -3143,6 +3165,7 @@ export default function AlumnoDashboard() {
                     inscribirte.
 
                   </p>
+<<<<<<< HEAD
                   <label className="dashboard-search">
                     Buscar por disciplina, nivel o profesor
                     <input
@@ -3152,6 +3175,8 @@ export default function AlumnoDashboard() {
                       placeholder="Ej.: inglés, inicial..."
                     />
                   </label>
+=======
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
 
 
@@ -3245,11 +3270,15 @@ export default function AlumnoDashboard() {
 
 
 
+<<<<<<< HEAD
                   {gruposDisponibles.filter((grupo) =>
                     `${grupo.disciplina} ${grupo.nivel} ${grupo.profesor ?? ""}`
                       .toLocaleLowerCase("es-AR")
                       .includes(busquedaGrupo.toLocaleLowerCase("es-AR"))
                   ).map(
+=======
+                  {gruposDisponibles.map(
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
                     (grupo) => (
 
@@ -3769,6 +3798,7 @@ export default function AlumnoDashboard() {
         )}
 
         {/* =================================================
+<<<<<<< HEAD
             CRÉDITOS
         ================================================= */}
         {seccion === "creditos" && (
@@ -3970,6 +4000,8 @@ export default function AlumnoDashboard() {
         )}
 
         {/* =================================================
+=======
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
             PERFIL
 
@@ -4201,4 +4233,8 @@ export default function AlumnoDashboard() {
 
 
 
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
