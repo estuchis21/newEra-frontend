@@ -10,6 +10,7 @@ export interface Cuota {
   fecha_vencimiento?: string;
   fecha_pago?: string | null;
   id_paquete?: number;
+
   paquete?: {
     id_paquete: number;
     nombre?: string;
@@ -19,29 +20,86 @@ export interface Cuota {
   };
 }
 
-export async function obtenerCuotasAlumno(idAlumno: number): Promise<Cuota[]> {
-  const { data } = await api.get<Cuota[]>(`/cuotas/alumno/${idAlumno}`);
-  return Array.isArray(data) ? data : [];
+export interface PreferenciaPagoResponse {
+  id?: string;
+  init_point?: string;
+  sandbox_init_point?: string;
+  url?: string;
+  message?: string;
+  [key: string]: unknown;
+}
+
+export interface CrearCuotaDto {
+  id_alumno: number;
+  id_paquete: number;
+}
+
+export interface CrearPagoDto {
+  id_cuota: number;
 }
 
 /**
- * Ruta conservada del frontend actual. Requiere POST /cuotas en NestJS.
- * Confirmar que el controller y DTO del backend acepten estos nombres snake_case.
+ * GET /cuotas/alumno/:idAlumno
+ * Obtiene las cuotas de un alumno.
  */
-export async function crearCuota(idAlumno: number, idPaquete: number): Promise<unknown> {
-  const { data } = await api.post("/cuotas", {
-    id_alumno: idAlumno,
-    id_paquete: idPaquete,
-  });
+export async function obtenerCuotasAlumno(
+  idAlumno: number
+): Promise<Cuota[]> {
+  const { data } = await api.get<Cuota[]>(
+    `/cuotas/alumno/${idAlumno}`
+  );
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  return [];
+}
+
+/**
+ * POST /cuotas
+ * Crea una cuota asociada al alumno y al paquete.
+ */
+export async function crearCuota(
+  idAlumno: number,
+  idPaquete: number
+): Promise<unknown> {
+  const payload: CrearCuotaDto = {
+    id_alumno: Number(idAlumno),
+    id_paquete: Number(idPaquete),
+  };
+
+  const { data } = await api.post(
+    "/cuotas",
+    payload
+  );
+
   return data;
 }
 
 /**
- * Ruta conservada del frontend actual. Requiere POST /pagos/crear en NestJS.
+ * POST /pagos/crear
+ * Solicita la creación de un pago para una cuota.
  */
-export async function crearPago(idCuota: number): Promise<unknown> {
-  const { data } = await api.post("/pagos/crear", {
-    id_cuota: idCuota,
-  });
+export async function crearPago(
+  idCuota: number
+): Promise<PreferenciaPagoResponse> {
+  const payload: CrearPagoDto = {
+    id_cuota: Number(idCuota),
+  };
+
+  const { data } = await api.post<PreferenciaPagoResponse>(
+    "/pagos/crear",
+    payload
+  );
+
   return data;
 }
+
+const cuotasService = {
+  obtenerCuotasAlumno,
+  crearCuota,
+  crearPago,
+};
+
+export default cuotasService;

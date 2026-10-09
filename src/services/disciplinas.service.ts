@@ -3,6 +3,7 @@ import api from "../api/axios";
 export interface Disciplina {
   id_disciplina: number;
   disciplina: string;
+  descripcion?: string;
 }
 
 export async function obtenerDisciplinas(): Promise<Disciplina[]> {
