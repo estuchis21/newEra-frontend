@@ -9,11 +9,8 @@ import ProfesoresDashboard from "../pages/profesores/ProfesoresDashboard";
 import Navbar from "../components/Navbar/Navbar";
 import RecuperarPassword from "../pages/recuperar-password/RecuperarPassword";
 import ResetPassword from "../pages/recuperar-password/ResetPassword";
-<<<<<<< HEAD
-=======
 import AdministracionDashboard from "../pages/administracion/AdministracionDashboard";
 import PagoResultado from "../pages/pagos/PagoResultado";
->>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
 export default function AppRoutes() {
 
@@ -56,11 +53,9 @@ export default function AppRoutes() {
                 />
                 <Route path="/recuperar-password" element={<RecuperarPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
-<<<<<<< HEAD
-=======
+
                 <Route path="/administracion" element={<AdministracionDashboard />} />
                 <Route path="/pago/:estado" element={<PagoResultado />} />
->>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
             </Routes>
 
         </BrowserRouter>
