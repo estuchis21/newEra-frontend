@@ -1,53 +1,21 @@
 import api from "../api/axios";
-import type { Disciplina } from "../types/disciplina";
 
-// Obtener todas las disciplinas
+export interface Disciplina {
+  id_disciplina: number;
+  disciplina: string;
+}
 
 export async function obtenerDisciplinas(): Promise<Disciplina[]> {
-
-
-    const response = await api.get<Disciplina[]>(
-        "/disciplinas"
-    );
-
-
-    return response.data;
-
+  const { data } = await api.get<Disciplina[]>("/disciplinas");
+  return data;
 }
 
-
-// Obtener una disciplina por ID
-
-export async function obtenerDisciplina(
-    id_disciplina: number
-): Promise<Disciplina> {
-
-
-    const response = await api.get<Disciplina>(
-        `/disciplinas/${id_disciplina}`
-    );
-
-
-    return response.data;
-
+export async function obtenerDisciplina(idDisciplina: number): Promise<Disciplina> {
+  const { data } = await api.get<Disciplina>(`/disciplinas/${idDisciplina}`);
+  return data;
 }
 
-
-// Crear disciplina (admin)
-
-export async function crearDisciplina(
-    disciplina: string
-) {
-
-
-    const response = await api.post(
-        "/disciplinas/crear",
-        {
-            disciplina
-        }
-    );
-
-
-    return response.data;
-
+export async function crearDisciplina(disciplina: string): Promise<Disciplina> {
+  const { data } = await api.post<Disciplina>("/disciplinas/crear", { disciplina });
+  return data;
 }

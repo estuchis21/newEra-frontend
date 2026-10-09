@@ -1,214 +1,114 @@
 import api from "../api/axios";
 
-// =====================================================
-// INTERFACES
-// =====================================================
-
 export interface HorarioGrupo {
-    id_horario: number;
-    dia_semana: string;
-    hora_inicio: string;
-    hora_fin: string;
+  id_horario?: number;
+  dia_semana: string;
+  hora_inicio: string;
+  hora_fin: string;
 }
 
 export interface Grupo {
-    id_grupo: number;
-    id_disciplina: number;
-    disciplina: string;
-    nivel: string;
-    cupo_max: number;
-    activo: boolean;
-
-    id_inscripcion?: number;
-
-    profesor?: string;
-
-    dia_semana?: string;
-    hora_inicio?: string;
-    hora_fin?: string;
-
-    horarios?: HorarioGrupo[];
+  id_grupo: number;
+  id_disciplina: number;
+  disciplina: string;
+  nivel: string;
+  cupo_max: number;
+  activo: boolean;
+  id_inscripcion?: number;
+  id_profesor?: number;
+  profesor?: string;
+  dia_semana?: string;
+  hora_inicio?: string;
+  hora_fin?: string;
+  horarios?: HorarioGrupo[];
 }
 
 export interface Clase {
-    id_clase: number;
-    id_grupo: number;
-    id_tipo_clase?: number;
-    fecha: string;
-    hora_inicio: string;
-    hora_fin: string;
-    estado: string;
-
-    disciplina?: string;
-    nivel?: string;
+  id_clase: number;
+  id_grupo: number;
+  id_tipo_clase?: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  estado: string;
+  disciplina?: string;
+  nivel?: string;
 }
 
-export interface Grupos_Alumnos {
-    id_disciplina: number;
-    nivel: string;
-    cupo_max: number;
-    id_profesor: number;
-    horarios: {
-        dia_semana: string;
-        hora_inicio: string;
-        hora_fin: string;
-    }[];
+export interface GrupoCrearDto {
+  id_disciplina: number;
+  nivel: string;
+  cupo_max: number;
+  id_profesor: number;
+  horarios: Array<{
+    dia_semana: string;
+    hora_inicio: string;
+    hora_fin: string;
+  }>;
 }
 
 export interface AlumnoClase {
-    id_alumno: number;
-    nombre: string;
-    apellido: string;
-    dni?: string;
+  id_alumno: number;
+  nombre: string;
+  apellido: string;
+  dni?: string;
 }
 
-// =====================================================
-// ALUMNO
-// =====================================================
+export async function obtenerGruposAlumno(idAlumno: number): Promise<Grupo[]> {
+  const { data } = await api.get<Grupo[]>(`/grupos/alumno/${idAlumno}`);
+  return data;
+}
 
-// Obtener los grupos en los que está inscripto un alumno
-export const obtenerGruposAlumno = async (
-    idAlumno: number
-): Promise<Grupo[]> => {
+export async function obtenerGruposDisponibles(): Promise<Grupo[]> {
+  const { data } = await api.get<Grupo[]>("/grupos/disponibles");
+  return data;
+}
 
-    const response = await api.get<Grupo[]>(
-        `/grupos/alumno/${idAlumno}`
-    );
+export async function inscribirseGrupo(idAlumno: number, idGrupo: number): Promise<unknown> {
+  const { data } = await api.post("/inscripciones", {
+    idAlumno,
+    idGrupo,
+  });
+  return data;
+}
 
-    return response.data;
-};
+export async function eliminarInscripcion(idInscripcion: number): Promise<unknown> {
+  const { data } = await api.delete(`/inscripciones/${idInscripcion}`);
+  return data;
+}
 
+export async function crearGrupo(grupo: GrupoCrearDto): Promise<Grupo> {
+  const { data } = await api.post<Grupo>("/grupos", grupo);
+  return data;
+}
 
-// =====================================================
-// OBTENER GRUPOS DISPONIBLES
-// =====================================================
+export async function obtenerGruposProfesor(idProfesor: number): Promise<Grupo[]> {
+  const { data } = await api.get<Grupo[]>(`/grupos/profesor/${idProfesor}`);
+  return data;
+}
 
-export const obtenerGruposDisponibles = async (): Promise<Grupo[]> => {
+export async function obtenerClasesProfesor(
+  idProfesor: number,
+  fecha?: string,
+): Promise<Clase[]> {
+  const { data } = await api.get<Clase[]>(
+    `/grupos/profesor/${idProfesor}/clases`,
+    { params: fecha ? { fecha } : undefined },
+  );
+  return data;
+}
 
-    const response = await api.get<Grupo[]>(
-        "/grupos/disponibles"
-    );
+export async function obtenerAlumnosPorClase(idClase: number): Promise<AlumnoClase[]> {
+  const { data } = await api.get<AlumnoClase[]>(`/grupos/clase/${idClase}/alumnos`);
+  return data;
+}
 
-    return response.data;
-};
+export async function obtenerTodasLasClases(): Promise<Clase[]> {
+  const { data } = await api.get<Clase[]>("/grupos/clases");
+  return data;
+}
 
-
-// =====================================================
-// INSCRIBIRSE A UN GRUPO
-// =====================================================
-
-export const inscribirseGrupo = async (
-    idAlumno: number,
-    idGrupo: number
-) => {
-
-    const response = await api.post(
-        "/inscripciones",
-        {
-            idAlumno,
-            idGrupo,
-        }
-    );
-
-    return response.data;
-};
-
-export const eliminarInscripcion = async (
-    idInscripcion: number
-) => {
-
-    const response = await api.delete(
-        `/inscripciones/${idInscripcion}`
-    );
-
-    return response.data;
-};
-
-// Crear un grupo
-export const crearGrupo = async (
-    grupo: Grupos_Alumnos
-) => {
-
-    const response = await api.post(
-        "/grupos",
-        grupo
-    );
-
-    return response.data;
-};
-
-// =====================================================
-// PROFESOR
-// =====================================================
-
-// Obtener grupos de un profesor
-export const obtenerGruposProfesor = async (
-    idProfesor: number
-): Promise<Grupo[]> => {
-
-    const response = await api.get<Grupo[]>(
-        `/grupos/profesor/${idProfesor}`
-    );
-
-    return response.data;
-};
-
-
-// Obtener clases de un profesor
-export const obtenerClasesProfesor = async (
-    idProfesor: number,
-    fecha?: string
-): Promise<Clase[]> => {
-
-    const response = await api.get<Clase[]>(
-        `/grupos/profesor/${idProfesor}/clases`,
-        {
-            params: {
-                fecha,
-            },
-        }
-    );
-
-    return response.data;
-};
-
-
-// Obtener alumnos de una clase
-export const obtenerAlumnosPorClase = async (
-    idClase: number
-): Promise<AlumnoClase[]> => {
-
-    const response = await api.get<AlumnoClase[]>(
-        `/grupos/clase/${idClase}/alumnos`
-    );
-
-    return response.data;
-};
-
-
-// =====================================================
-// CLASES
-// =====================================================
-
-// Obtener todas las clases
-export const obtenerTodasLasClases = async (): Promise<Clase[]> => {
-
-    const response = await api.get<Clase[]>(
-        "/grupos/clases"
-    );
-
-    return response.data;
-};
-
-
-// Obtener una clase por ID
-export const obtenerClasePorId = async (
-    idClase: number
-): Promise<Clase> => {
-
-    const response = await api.get<Clase>(
-        `/grupos/clases/${idClase}`
-    );
-
-    return response.data;
-};
+export async function obtenerClasePorId(idClase: number): Promise<Clase> {
+  const { data } = await api.get<Clase>(`/grupos/clases/${idClase}`);
+  return data;
+}

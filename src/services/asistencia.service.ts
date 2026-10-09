@@ -1,115 +1,54 @@
 import api from "../api/axios";
 
-// =====================================================
-// DTO PARA REGISTRAR ASISTENCIA
-// =====================================================
+export type EstadoAsistencia = "Presente" | "Ausente" | "Justificado" | string;
 
 export interface RegistrarAsistenciaDto {
   id_alumno: number;
   id_clase: number;
-  estado: string;
+  estado: EstadoAsistencia;
   observaciones?: string;
 }
-
-// =====================================================
-// MODELO DE ASISTENCIA
-// =====================================================
 
 export interface Asistencia {
   id_asistencia: number;
   id_alumno: number;
   id_clase: number;
-  estado: string;
-  observaciones?: string;
+  estado: EstadoAsistencia;
+  observaciones?: string | null;
   fecha?: string;
   disciplina?: string;
   grupo?: string;
 }
 
-// =====================================================
-// OBTENER TODAS LAS ASISTENCIAS DE UN ALUMNO
-// =====================================================
+type ApiList<T> = T[] | { data?: T[]; rows?: T[] };
 
-export const obtenerAsistencias = async (
-  idAlumno: number
-): Promise<Asistencia[]> => {
-  const response = await api.get(
-    `/asistencias/alumno/${idAlumno}`
-  );
-
-  console.log(
-    "RESPUESTA COMPLETA DE ASISTENCIAS:",
-    response.data
-  );
-
-  if (Array.isArray(response.data)) {
-    return response.data;
-  }
-
-  if (Array.isArray(response.data?.data)) {
-    return response.data.data;
-  }
-
-  if (Array.isArray(response.data?.rows)) {
-    return response.data.rows;
-  }
-
-  console.error(
-    "Formato inesperado de asistencias:",
-    response.data
-  );
-
+function normalizarLista<T>(response: ApiList<T>): T[] {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.rows)) return response.rows;
   return [];
-};
+}
 
-// =====================================================
-// OBTENER ASISTENCIA DE UN ALUMNO EN UNA CLASE
-// =====================================================
+export async function obtenerAsistencias(idAlumno: number): Promise<Asistencia[]> {
+  const { data } = await api.get<ApiList<Asistencia>>(
+    `/asistencias/alumno/${idAlumno}`,
+  );
+  return normalizarLista(data);
+}
 
-export const obtenerAsistenciaAlumnoClase = async (
+export async function obtenerAsistenciaAlumnoClase(
   idAlumno: number,
-  idClase: number
-): Promise<Asistencia[]> => {
-  const response = await api.get(
-    `/asistencias/alumno/${idAlumno}/clase/${idClase}`
+  idClase: number,
+): Promise<Asistencia[]> {
+  const { data } = await api.get<ApiList<Asistencia>>(
+    `/asistencias/alumno/${idAlumno}/clase/${idClase}`,
   );
+  return normalizarLista(data);
+}
 
-  console.log(
-    "ASISTENCIA DEL ALUMNO EN LA CLASE:",
-    response.data
-  );
-
-  if (Array.isArray(response.data)) {
-    return response.data;
-  }
-
-  if (Array.isArray(response.data?.data)) {
-    return response.data.data;
-  }
-
-  if (Array.isArray(response.data?.rows)) {
-    return response.data.rows;
-  }
-
-  console.error(
-    "Formato inesperado de asistencia:",
-    response.data
-  );
-
-  return [];
-};
-
-// =====================================================
-// REGISTRAR ASISTENCIA
-// =====================================================
-
-export const registrarAsistencia = async (
-  dto: RegistrarAsistenciaDto
-) => {
-  const response = await api.post(
-    "/asistencias",
-    dto
-  );
-
-  return response.data;
-};
+export async function registrarAsistencia(
+  dto: RegistrarAsistenciaDto,
+): Promise<Asistencia> {
+  const { data } = await api.post<Asistencia>("/asistencias", dto);
+  return data;
+}

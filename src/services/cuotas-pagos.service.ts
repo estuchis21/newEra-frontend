@@ -1,81 +1,47 @@
-import api from '../api/axios';
-
-// ============================================================
-// TIPOS
-// ============================================================
+import api from "../api/axios";
 
 export interface Cuota {
   id_cuota: number;
   id_alumno: number;
-  id_paquete: number;
-
-  // Estos nombres dependen de lo que devuelva tu backend
   mes?: number;
   anio?: number;
-
   estado?: string;
-  monto?: number;
+  monto?: number | string;
   fecha_vencimiento?: string;
-  fecha_pago?: string;
-
+  fecha_pago?: string | null;
+  id_paquete?: number;
   paquete?: {
     id_paquete: number;
     nombre?: string;
     creditos?: number;
-    precio?: number;
+    cantidad_creditos?: number;
+    precio?: number | string;
   };
 }
 
-// ============================================================
-// OBTENER CUOTAS DEL ALUMNO
-// ============================================================
+export async function obtenerCuotasAlumno(idAlumno: number): Promise<Cuota[]> {
+  const { data } = await api.get<Cuota[]>(`/cuotas/alumno/${idAlumno}`);
+  return Array.isArray(data) ? data : [];
+}
 
-export const obtenerCuotasAlumno = async (
-  idAlumno: number,
-): Promise<Cuota[]> => {
-  const response = await api.get(
-    `/cuotas/alumno/${idAlumno}`,
-  );
+/**
+ * Ruta conservada del frontend actual. Requiere POST /cuotas en NestJS.
+ * Confirmar que el controller y DTO del backend acepten estos nombres snake_case.
+ */
+export async function crearCuota(idAlumno: number, idPaquete: number): Promise<unknown> {
+  const { data } = await api.post("/cuotas", {
+    id_alumno: idAlumno,
+    id_paquete: idPaquete,
+  });
+  return data;
+}
 
-  return Array.isArray(response.data)
-    ? response.data
-    : [];
-};
-
-// ============================================================
-// CREAR CUOTA
-// ============================================================
-
-export const crearCuota = async (
-  idAlumno: number,
-  idPaquete: number,
-) => {
-  const response = await api.post(
-    '/cuotas',
-    {
-      id_alumno: idAlumno,
-      id_paquete: idPaquete,
-    },
-  );
-
-  return response.data;
-};
-
-// ============================================================
-// CREAR PAGO
-// ============================================================
-
-export const crearPago = async (
-  idCuota: number,
-) => {
-  const response = await api.post(
-    '/pagos/crear',
-    {
-      id_cuota: idCuota,
-    },
-  );
-
-  return response.data;
-};
-
-export default api;
+/**
+ * Ruta conservada del frontend actual. Requiere POST /pagos/crear en NestJS.
+ */
+export async function crearPago(idCuota: number): Promise<unknown> {
+  const { data } = await api.post("/pagos/crear", {
+    id_cuota: idCuota,
+  });
+  return data;
+}

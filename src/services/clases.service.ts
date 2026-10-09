@@ -1,35 +1,28 @@
-
 import api from "../api/axios";
 
+export interface Clase {
+  id_clase: number;
+  id_grupo: number;
+  id_tipo_clase?: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  estado: string;
+  disciplina?: string;
+  nivel?: string;
+}
 
-// Obtener todas las clases
-export const obtenerClases = async () => {
+export async function obtenerClases(): Promise<Clase[]> {
+  const { data } = await api.get<Clase[]>("/clases");
+  return data;
+}
 
-    const response = await api.get(
-        "/clases"
-    );
+export async function obtenerClase(idClase: number): Promise<Clase> {
+  const { data } = await api.get<Clase>(`/clases/${idClase}`);
+  return data;
+}
 
-    return response.data;
-};
-
-
-// Obtener clase por ID
-export const obtenerClase = async (idClase: number) => {
-
-    const response = await api.get(
-        `/clases/${idClase}`
-    );
-
-    return response.data;
-};
-
-
-// Obtener clases de un grupo
-export const obtenerClasesGrupo = async (idGrupo: number) => {
-
-    const response = await api.get(
-        `/clases/grupo/${idGrupo}`
-    );
-
-    return response.data;
-};
+export async function obtenerClasesGrupo(idGrupo: number): Promise<Clase[]> {
+  const { data } = await api.get<Clase[]>(`/clases/grupo/${idGrupo}`);
+  return data;
+}
