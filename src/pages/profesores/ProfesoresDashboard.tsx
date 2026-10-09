@@ -39,11 +39,9 @@ import {
 } from "../../services/horarios.service";
 
 import "./ProfesoresDashboard.css";
-<<<<<<< HEAD
 import { exportarCSV, fechaLocal } from "../../utils/exportarCsv";
 import { obtenerLiquidacionesProfesor, type LiquidacionProfesor } from "../../services/liquidaciones.service";
-=======
->>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
+
 
 
 // ============================================================
@@ -57,10 +55,7 @@ type Seccion =
     | "alumnos"
     | "asistencias"
     | "liquidaciones"
-<<<<<<< HEAD
     | "reportes"
-=======
->>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
     | "perfil";
 
 
@@ -117,7 +112,6 @@ const ProfesorDashboard = () => {
         setSeccion,
     ] = useState<Seccion>("inicio");
 
-<<<<<<< HEAD
     const [liquidaciones, setLiquidaciones] = useState<LiquidacionProfesor[]>([]);
     const [loadingLiquidaciones, setLoadingLiquidaciones] = useState(false);
     const [errorLiquidaciones, setErrorLiquidaciones] = useState("");
@@ -125,8 +119,6 @@ const ProfesorDashboard = () => {
     const [busquedaAlumnoReporte, setBusquedaAlumnoReporte] = useState("");
     const [filtroAgenda, setFiltroAgenda] = useState<"todas" | "pendientes" | "finalizadas">("todas");
 
-=======
->>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
     // ========================================================
     // GRUPOS
@@ -1444,7 +1436,7 @@ const ProfesorDashboard = () => {
     // EFECTO INICIAL
     // ========================================================
 
-<<<<<<< HEAD
+
     // ========================================================
     // CARGAR LIQUIDACIONES DEL PROFESOR
     // ========================================================
@@ -1473,8 +1465,6 @@ const ProfesorDashboard = () => {
         return () => { cancelado = true; };
     }, [idProfesor]);
 
-=======
->>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
     useEffect(
         () => {
 
@@ -1710,7 +1700,7 @@ const ProfesorDashboard = () => {
 
 
                     <button
-<<<<<<< HEAD
+
                         className={seccion === "reportes" ? "active" : ""}
                         onClick={() => cambiarSeccion("reportes")}
                         type="button"
@@ -1719,8 +1709,6 @@ const ProfesorDashboard = () => {
                     </button>
 
                     <button
-=======
->>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
                         className={
                             seccion ===
                             "perfil"
@@ -3406,7 +3394,6 @@ const ProfesorDashboard = () => {
 
 
                 {/* =================================================
-<<<<<<< HEAD
                     REPORTES, AGENDA Y EXPORTACIÓN
                 ================================================= */}
                 {seccion === "reportes" && (
@@ -3559,19 +3546,15 @@ const ProfesorDashboard = () => {
                                     </h2>
 
                                     <p>
-<<<<<<< HEAD
-Consultá el resumen de tu actividad docente y descargá grupos, clases y alumnos desde Reportes. La liquidación monetaria requiere que el backend exponga los importes y períodos confirmados.
-=======
-                                        Acá vas a poder consultar tus liquidaciones.
->>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
+                                Consultá el resumen de tu actividad docente y descargá grupos, clases y alumnos desde Reportes. La liquidación monetaria requiere que el backend exponga los importes y períodos confirmados.
+                               Acá vas a poder consultar tus liquidaciones.
+
                                     </p>
 
                                 </div>
 
                             </div>
 
-
-<<<<<<< HEAD
                             {loadingLiquidaciones ? (
                                 <div className="empty-state"><p>Cargando liquidaciones...</p></div>
                             ) : errorLiquidaciones ? (
@@ -3646,13 +3629,11 @@ Consultá el resumen de tu actividad docente y descargá grupos, clases y alumno
                                 </span>
 
                             </div>
->>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
                         </div>
 
                     </section>
                 )}
-
 
                 {/* =================================================
                     PERFIL
