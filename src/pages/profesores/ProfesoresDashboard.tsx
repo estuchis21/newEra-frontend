@@ -24,7 +24,7 @@ import {
     obtenerLiquidacionesProfesor,
     type LiquidacionProfesor,
 } from "../../services/liquidaciones.service";
-import { exportarCSV, fechaLocal } from "../../utils/exportarCsv";
+import { exportarCSV } from "../../utils/exportarCsv";
 
 import "./ProfesoresDashboard.css";
 
@@ -59,6 +59,8 @@ type NuevoGrupo = {
     hora_fin: string;
 };
 
+type LiquidacionFlexible = Record<string, unknown>;
+
 const FORMULARIO_GRUPO_INICIAL: NuevoGrupo = {
     id_disciplina: 0,
     nivel: "Principiante",
@@ -66,6 +68,55 @@ const FORMULARIO_GRUPO_INICIAL: NuevoGrupo = {
     dia_semana: "Lunes",
     hora_inicio: "18:00",
     hora_fin: "19:00",
+};
+
+const obtenerTextoLiquidacion = (
+    liquidacion: LiquidacionProfesor,
+    campos: string[],
+): string => {
+    const datos = liquidacion as unknown as LiquidacionFlexible;
+
+    for (const campo of campos) {
+        const valor = datos[campo];
+
+        if (valor !== null && valor !== undefined && valor !== "") {
+            return String(valor);
+        }
+    }
+
+    return "";
+};
+
+const obtenerMontoLiquidacion = (
+    liquidacion: LiquidacionProfesor,
+): number | null => {
+    const datos = liquidacion as unknown as LiquidacionFlexible;
+
+    const camposMonto = [
+        "monto_total",
+        "monto",
+        "total",
+        "importe",
+        "importe_total",
+    ];
+
+    for (const campo of camposMonto) {
+        const valor = datos[campo];
+
+        if (typeof valor === "number" && Number.isFinite(valor)) {
+            return valor;
+        }
+
+        if (typeof valor === "string" && valor.trim() !== "") {
+            const numero = Number(valor);
+
+            if (Number.isFinite(numero)) {
+                return numero;
+            }
+        }
+    }
+
+    return null;
 };
 
 const ProfesorDashboard = () => {
@@ -300,7 +351,7 @@ const ProfesorDashboard = () => {
         }
     }, [idProfesor]);
 
-    // CARGAR HORARIOS: PETICIONES CONCURRENTES
+    // CARGAR HORARIOS DE TODOS LOS GRUPOS EN PARALELO
     const cargarHorariosGrupos = useCallback(async () => {
         if (grupos.length === 0) {
             setHorariosGrupo({});
@@ -324,6 +375,7 @@ const ProfesorDashboard = () => {
                             horarios: Array.isArray(datos)
                                 ? (datos as HorarioGrupo[])
                                 : [],
+                            error: false,
                         };
                     } catch (error) {
                         console.error(
@@ -348,18 +400,20 @@ const ProfesorDashboard = () => {
 
             setHorariosGrupo(mapa);
 
-            if (resultados.some((resultado) => "error" in resultado)) {
+            if (resultados.some((resultado) => resultado.error)) {
                 setErrorHorarios(
                     "No se pudieron cargar todos los horarios.",
                 );
             }
+        } catch (error) {
+            console.error("Error cargando horarios:", error);
+            setErrorHorarios("No se pudieron cargar los horarios.");
         } finally {
             setLoadingHorarios(false);
         }
     }, [grupos]);
 
     // CARGAR ALUMNOS DE TODOS LOS GRUPOS
-    // Las clases de cada grupo se consultan en paralelo, no una por una.
     const cargarAlumnosGrupos = useCallback(async () => {
         if (grupos.length === 0 || clases.length === 0) {
             setAlumnosPorGrupo({});
@@ -410,10 +464,14 @@ const ProfesorDashboard = () => {
 
                     respuestas.forEach((respuesta) => {
                         respuesta.alumnos.forEach((alumno: AlumnoClase) => {
-                            mapaAlumnos.set(
-                                Number(alumno.id_alumno),
-                                alumno,
-                            );
+                            const idAlumno = Number(alumno.id_alumno);
+
+                            if (
+                                Number.isInteger(idAlumno) &&
+                                idAlumno > 0
+                            ) {
+                                mapaAlumnos.set(idAlumno, alumno);
+                            }
                         });
                     });
 
@@ -438,6 +496,11 @@ const ProfesorDashboard = () => {
                     "Algunos alumnos no pudieron cargarse. Podés volver a intentar actualizando la página.",
                 );
             }
+        } catch (error) {
+            console.error("Error cargando alumnos por grupo:", error);
+            setErrorAlumnosGrupos(
+                "No se pudieron cargar los alumnos de los grupos.",
+            );
         } finally {
             setLoadingAlumnosGrupos(false);
         }
@@ -465,7 +528,6 @@ const ProfesorDashboard = () => {
 
             setAlumnos(alumnosClase);
 
-            // Consultar las asistencias de todos los alumnos en paralelo.
             const resultados = await Promise.all(
                 alumnosClase.map(async (alumno) => {
                     const idAlumno = Number(alumno.id_alumno);
@@ -687,7 +749,6 @@ const ProfesorDashboard = () => {
                 ),
             });
 
-            // Actualizar grupos y clases en paralelo.
             await Promise.all([cargarGrupos(), cargarClases()]);
 
             await mostrarExito(
@@ -710,7 +771,7 @@ const ProfesorDashboard = () => {
         }
     };
 
-    // ESTADÍSTICAS DE LA CLASE CONSULTADA
+    // TOTAL DE ALUMNOS ÚNICOS
     const totalAlumnos = useMemo(() => {
         const ids = new Set<number>();
 
@@ -718,12 +779,16 @@ const ProfesorDashboard = () => {
             .flat()
             .forEach((alumno) => {
                 const id = Number(alumno.id_alumno);
-                if (Number.isInteger(id) && id > 0) ids.add(id);
+
+                if (Number.isInteger(id) && id > 0) {
+                    ids.add(id);
+                }
             });
 
         return ids.size;
     }, [alumnosPorGrupo]);
 
+    // ESTADÍSTICAS DE LA CLASE CONSULTADA
     const totalPresentes = useMemo(
         () =>
             Object.values(asistencias).filter(
@@ -785,7 +850,7 @@ const ProfesorDashboard = () => {
         });
     }, [alumnosPorGrupo]);
 
-    // FILTRO DE REPORTES: NOMBRE, APELLIDO, ID O DNI
+    // FILTRO DE REPORTES
     const alumnosFiltradosReporte = useMemo(() => {
         const termino = busquedaAlumnoReporte
             .trim()
@@ -819,6 +884,7 @@ const ProfesorDashboard = () => {
         }
     };
 
+    // EXPORTAR REPORTE CSV
     const exportarReporteAlumnos = async () => {
         if (alumnosFiltradosReporte.length === 0) {
             await mostrarError(
@@ -835,10 +901,25 @@ const ProfesorDashboard = () => {
             DNI: alumno.dni ?? "",
         }));
 
-        exportarCSV(
-            dataCsv,
-            `reporte_alumnos_${fechaLocal()}.csv`,
-        );
+        const ahora = new Date();
+        const fechaArchivo = [
+            ahora.getFullYear(),
+            String(ahora.getMonth() + 1).padStart(2, "0"),
+            String(ahora.getDate()).padStart(2, "0"),
+        ].join("-");
+
+        const nombreArchivo = `reporte_alumnos_${fechaArchivo}.csv`;
+
+        try {
+            exportarCSV(nombreArchivo, dataCsv);
+        } catch (error) {
+            console.error("Error exportando el reporte:", error);
+
+            await mostrarError(
+                "Error al exportar",
+                "No se pudo generar el archivo CSV. Intentá nuevamente.",
+            );
+        }
     };
 
     // CARGA INICIAL
@@ -882,7 +963,9 @@ const ProfesorDashboard = () => {
                     setLiquidaciones([]);
                 }
             } finally {
-                if (!cancelado) setLoadingLiquidaciones(false);
+                if (!cancelado) {
+                    setLoadingLiquidaciones(false);
+                }
             }
         };
 
@@ -898,7 +981,7 @@ const ProfesorDashboard = () => {
         void cargarHorariosGrupos();
     }, [cargarHorariosGrupos]);
 
-    // CARGAR ALUMNOS POR GRUPO CUANDO CAMBIAN GRUPOS O CLASES
+    // CARGAR ALUMNOS CUANDO CAMBIAN LOS GRUPOS O LAS CLASES
     useEffect(() => {
         void cargarAlumnosGrupos();
     }, [cargarAlumnosGrupos]);
@@ -1046,9 +1129,7 @@ const ProfesorDashboard = () => {
                         <div className="dashboard-card">
                             <div className="card-header">
                                 <div>
-                                    <span className="section-label">
-                                        INICIO
-                                    </span>
+                                    <span className="section-label">INICIO</span>
                                     <h2>Bienvenido al panel</h2>
                                     <p>
                                         Desde acá podés administrar tus grupos,
@@ -1092,7 +1173,9 @@ const ProfesorDashboard = () => {
                                         <span className="section-label">
                                             RESUMEN
                                         </span>
-                                        <h2>Asistencia de la clase consultada</h2>
+                                        <h2>
+                                            Asistencia de la clase consultada
+                                        </h2>
                                         <p>
                                             Estas estadísticas corresponden a
                                             la clase que consultaste, no al
@@ -1155,27 +1238,21 @@ const ProfesorDashboard = () => {
                                 >
                                     <button
                                         className="primary-button"
-                                        onClick={() =>
-                                            cambiarSeccion("grupos")
-                                        }
+                                        onClick={() => cambiarSeccion("grupos")}
                                     >
                                         👥 Ver grupos
                                     </button>
 
                                     <button
                                         className="primary-button"
-                                        onClick={() =>
-                                            cambiarSeccion("clases")
-                                        }
+                                        onClick={() => cambiarSeccion("clases")}
                                     >
                                         📚 Ver clases
                                     </button>
 
                                     <button
                                         className="primary-button"
-                                        onClick={() =>
-                                            cambiarSeccion("alumnos")
-                                        }
+                                        onClick={() => cambiarSeccion("alumnos")}
                                     >
                                         🎓 Ver alumnos
                                     </button>
@@ -1200,9 +1277,7 @@ const ProfesorDashboard = () => {
                         <div className="dashboard-card">
                             <div className="card-header">
                                 <div>
-                                    <span className="section-label">
-                                        GRUPOS
-                                    </span>
+                                    <span className="section-label">GRUPOS</span>
                                     <h2>Mis grupos</h2>
                                     <p>Grupos que tenés asignados.</p>
                                 </div>
@@ -1276,9 +1351,7 @@ const ProfesorDashboard = () => {
                                                                 disciplina.id_disciplina
                                                             }
                                                         >
-                                                            {
-                                                                disciplina.disciplina
-                                                            }
+                                                            {disciplina.disciplina}
                                                         </option>
                                                     ),
                                                 )}
@@ -1340,24 +1413,16 @@ const ProfesorDashboard = () => {
                                                     )
                                                 }
                                             >
-                                                <option value="Lunes">
-                                                    Lunes
-                                                </option>
-                                                <option value="Martes">
-                                                    Martes
-                                                </option>
+                                                <option value="Lunes">Lunes</option>
+                                                <option value="Martes">Martes</option>
                                                 <option value="Miércoles">
                                                     Miércoles
                                                 </option>
-                                                <option value="Jueves">
-                                                    Jueves
-                                                </option>
+                                                <option value="Jueves">Jueves</option>
                                                 <option value="Viernes">
                                                     Viernes
                                                 </option>
-                                                <option value="Sábado">
-                                                    Sábado
-                                                </option>
+                                                <option value="Sábado">Sábado</option>
                                             </select>
                                         </div>
 
@@ -1430,9 +1495,7 @@ const ProfesorDashboard = () => {
                             )}
 
                             {loadingGrupos ? (
-                                <div className="loading">
-                                    Cargando grupos...
-                                </div>
+                                <div className="loading">Cargando grupos...</div>
                             ) : errorGrupos ? (
                                 <div className="dashboard-warning">
                                     ⚠️ {errorGrupos}
@@ -1499,18 +1562,12 @@ const ProfesorDashboard = () => {
                                                                     }
                                                                 >
                                                                     📅{" "}
-                                                                    {
-                                                                        horario.dia_semana
-                                                                    }
+                                                                    {horario.dia_semana}
                                                                     <br />
                                                                     🕐{" "}
-                                                                    {
-                                                                        horario.hora_inicio
-                                                                    }{" "}
+                                                                    {horario.hora_inicio}{" "}
                                                                     -{" "}
-                                                                    {
-                                                                        horario.hora_fin
-                                                                    }
+                                                                    {horario.hora_fin}
                                                                 </div>
                                                             ),
                                                         )}
@@ -1560,9 +1617,7 @@ const ProfesorDashboard = () => {
                         <div className="dashboard-card">
                             <div className="card-header">
                                 <div>
-                                    <span className="section-label">
-                                        CLASES
-                                    </span>
+                                    <span className="section-label">CLASES</span>
                                     <h2>Mis clases</h2>
                                     <p>
                                         Seleccioná una clase para consultar sus
@@ -1572,9 +1627,7 @@ const ProfesorDashboard = () => {
                             </div>
 
                             {loadingClases ? (
-                                <div className="loading">
-                                    Cargando clases...
-                                </div>
+                                <div className="loading">Cargando clases...</div>
                             ) : errorClases ? (
                                 <div className="dashboard-warning">
                                     ⚠️ {errorClases}
@@ -1606,9 +1659,7 @@ const ProfesorDashboard = () => {
                                         >
                                             <div className="class-card-header">
                                                 <span>Clase</span>
-                                                <span>
-                                                    #{clase.id_clase}
-                                                </span>
+                                                <span>#{clase.id_clase}</span>
                                             </div>
 
                                             <h3>
@@ -1633,9 +1684,7 @@ const ProfesorDashboard = () => {
                                             )}
 
                                             {clase.estado && (
-                                                <p>
-                                                    Estado: {clase.estado}
-                                                </p>
+                                                <p>Estado: {clase.estado}</p>
                                             )}
 
                                             <button
@@ -1740,14 +1789,12 @@ const ProfesorDashboard = () => {
                                                         </strong>
 
                                                         <span>
-                                                            ID Alumno:{" "}
-                                                            {idAlumno}
+                                                            ID Alumno: {idAlumno}
                                                         </span>
 
                                                         {alumno.dni && (
                                                             <span>
-                                                                DNI:{" "}
-                                                                {alumno.dni}
+                                                                DNI: {alumno.dni}
                                                             </span>
                                                         )}
                                                     </div>
@@ -1823,41 +1870,32 @@ const ProfesorDashboard = () => {
                                     </div>
                                 )}
 
-                                {claseSeleccionada !== null &&
-                                    !loadingAsistencias && (
-                                        <div
-                                            className="stats-grid"
-                                            style={{ marginTop: "20px" }}
-                                        >
-                                            <div className="stat-card">
-                                                <span>Presentes</span>
-                                                <strong>
-                                                    {totalPresentes}
-                                                </strong>
-                                            </div>
-
-                                            <div className="stat-card">
-                                                <span>Ausentes</span>
-                                                <strong>
-                                                    {totalAusentes}
-                                                </strong>
-                                            </div>
-
-                                            <div className="stat-card">
-                                                <span>Registradas</span>
-                                                <strong>
-                                                    {totalRegistradas}
-                                                </strong>
-                                            </div>
-
-                                            <div className="stat-card">
-                                                <span>Asistencia</span>
-                                                <strong>
-                                                    {porcentajeAsistencia}%
-                                                </strong>
-                                            </div>
+                                {!loadingAsistencias && (
+                                    <div
+                                        className="stats-grid"
+                                        style={{ marginTop: "20px" }}
+                                    >
+                                        <div className="stat-card">
+                                            <span>Presentes</span>
+                                            <strong>{totalPresentes}</strong>
                                         </div>
-                                    )}
+
+                                        <div className="stat-card">
+                                            <span>Ausentes</span>
+                                            <strong>{totalAusentes}</strong>
+                                        </div>
+
+                                        <div className="stat-card">
+                                            <span>Registradas</span>
+                                            <strong>{totalRegistradas}</strong>
+                                        </div>
+
+                                        <div className="stat-card">
+                                            <span>Asistencia</span>
+                                            <strong>{porcentajeAsistencia}%</strong>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </section>
@@ -1869,9 +1907,7 @@ const ProfesorDashboard = () => {
                         <div className="dashboard-card">
                             <div className="card-header">
                                 <div>
-                                    <span className="section-label">
-                                        ALUMNOS
-                                    </span>
+                                    <span className="section-label">ALUMNOS</span>
                                     <h2>Mis alumnos</h2>
                                     <p>
                                         Alumnos asociados a tus grupos y clases.
@@ -1883,7 +1919,7 @@ const ProfesorDashboard = () => {
                                 <div className="loading">
                                     Cargando alumnos...
                                 </div>
-                            ) : totalAlumnos === 0 ? (
+                            ) : alumnosUnicos.length === 0 ? (
                                 <div className="empty-state">
                                     <div>🎓</div>
                                     <strong>No hay alumnos</strong>
@@ -1912,14 +1948,11 @@ const ProfesorDashboard = () => {
                                                 </strong>
 
                                                 <span>
-                                                    ID Alumno:{" "}
-                                                    {alumno.id_alumno}
+                                                    ID Alumno: {alumno.id_alumno}
                                                 </span>
 
                                                 {alumno.dni && (
-                                                    <span>
-                                                        DNI: {alumno.dni}
-                                                    </span>
+                                                    <span>DNI: {alumno.dni}</span>
                                                 )}
                                             </div>
                                         </div>
@@ -1977,42 +2010,58 @@ const ProfesorDashboard = () => {
                                 </div>
                             )}
 
-                            <div className="classes-grid">
-                                {clases.map((clase) => (
-                                    <div
-                                        className={
-                                            claseSeleccionada ===
-                                            clase.id_clase
-                                                ? "class-card selected"
-                                                : "class-card"
-                                        }
-                                        key={clase.id_clase}
-                                    >
-                                        <h3>
-                                            {clase.disciplina ?? "Clase"}
-                                        </h3>
-
-                                        <p>📅 {clase.fecha}</p>
-
-                                        <p>
-                                            🕐 {clase.hora_inicio} -{" "}
-                                            {clase.hora_fin}
-                                        </p>
-
-                                        <button
-                                            className="primary-button"
-                                            onClick={() => {
-                                                setSeccion("clases");
-                                                void cargarAlumnosClase(
-                                                    clase.id_clase,
-                                                );
-                                            }}
+                            {loadingClases ? (
+                                <div className="loading">Cargando clases...</div>
+                            ) : errorClases ? (
+                                <div className="dashboard-warning">
+                                    ⚠️ {errorClases}
+                                </div>
+                            ) : clases.length === 0 ? (
+                                <div className="empty-state">
+                                    <div>📚</div>
+                                    <strong>No tenés clases</strong>
+                                    <span>
+                                        No hay clases asignadas actualmente.
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="classes-grid">
+                                    {clases.map((clase) => (
+                                        <div
+                                            className={
+                                                claseSeleccionada ===
+                                                clase.id_clase
+                                                    ? "class-card selected"
+                                                    : "class-card"
+                                            }
+                                            key={clase.id_clase}
                                         >
-                                            Tomar asistencia
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
+                                            <h3>
+                                                {clase.disciplina ?? "Clase"}
+                                            </h3>
+
+                                            <p>📅 {clase.fecha}</p>
+
+                                            <p>
+                                                🕐 {clase.hora_inicio} -{" "}
+                                                {clase.hora_fin}
+                                            </p>
+
+                                            <button
+                                                className="primary-button"
+                                                onClick={() => {
+                                                    setSeccion("clases");
+                                                    void cargarAlumnosClase(
+                                                        clase.id_clase,
+                                                    );
+                                                }}
+                                            >
+                                                Tomar asistencia
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </section>
                 )}
@@ -2028,8 +2077,7 @@ const ProfesorDashboard = () => {
                                     </span>
                                     <h2>Mis liquidaciones</h2>
                                     <p>
-                                        Historial de haberes y pagos
-                                        registrados.
+                                        Historial de haberes y pagos registrados.
                                     </p>
                                 </div>
                             </div>
@@ -2055,52 +2103,98 @@ const ProfesorDashboard = () => {
                                 </div>
                             ) : (
                                 <div className="attendance-list">
-                                    {liquidaciones.map((liquidacion, index) => (
-                                        <div
-                                            className="attendance-item"
-                                            key={
-                                                liquidacion.id_liquidacion ??
-                                                index
-                                            }
-                                        >
-                                            <div className="student-avatar">
-                                                💰
-                                            </div>
+                                    {liquidaciones.map((liquidacion, index) => {
+                                        const periodo =
+                                            obtenerTextoLiquidacion(
+                                                liquidacion,
+                                                [
+                                                    "periodo",
+                                                    "mes_liquidacion",
+                                                    "fecha_periodo",
+                                                    "fecha",
+                                                ],
+                                            );
 
-                                            <div className="attendance-student">
-                                                <strong>
-                                                    Período:{" "}
-                                                    {liquidacion.mes}/
-                                                    {liquidacion.anio}
-                                                </strong>
+                                        const mes = obtenerTextoLiquidacion(
+                                            liquidacion,
+                                            ["mes", "mes_liquidacion"],
+                                        );
 
-                                                <span>
-                                                    Monto: $
-                                                    {Number(
-                                                        liquidacion.monto_total ??
-                                                            0,
-                                                    ).toLocaleString("es-AR", {
-                                                        minimumFractionDigits: 2,
-                                                        maximumFractionDigits: 2,
-                                                    })}
-                                                </span>
-                                            </div>
+                                        const anio = obtenerTextoLiquidacion(
+                                            liquidacion,
+                                            [
+                                                "anio",
+                                                "año",
+                                                "anio_liquidacion",
+                                                "periodo_anio",
+                                            ],
+                                        );
 
-                                            <div className="attendance-status">
-                                                <span
-                                                    className={
-                                                        liquidacion.estado ===
-                                                        "PAGADO"
-                                                            ? "status present"
-                                                            : "status pending"
-                                                    }
-                                                >
-                                                    {liquidacion.estado ??
-                                                        "PENDIENTE"}
-                                                </span>
+                                        const monto =
+                                            obtenerMontoLiquidacion(
+                                                liquidacion,
+                                            );
+
+                                        const estado =
+                                            obtenerTextoLiquidacion(
+                                                liquidacion,
+                                                ["estado"],
+                                            ) || "PENDIENTE";
+
+                                        const idLiquidacion =
+                                            (
+                                                liquidacion as LiquidacionProfesor & {
+                                                    id_liquidacion?: number;
+                                                }
+                                            ).id_liquidacion;
+
+                                        return (
+                                            <div
+                                                className="attendance-item"
+                                                key={idLiquidacion ?? index}
+                                            >
+                                                <div className="student-avatar">
+                                                    💰
+                                                </div>
+
+                                                <div className="attendance-student">
+                                                    <strong>
+                                                        Período:{" "}
+                                                        {mes && anio
+                                                            ? `${mes}/${anio}`
+                                                            : periodo ||
+                                                              "No especificado"}
+                                                    </strong>
+
+                                                    <span>
+                                                        Monto:{" "}
+                                                        {monto === null
+                                                            ? "No disponible"
+                                                            : `$${monto.toLocaleString(
+                                                                  "es-AR",
+                                                                  {
+                                                                      minimumFractionDigits: 2,
+                                                                      maximumFractionDigits: 2,
+                                                                  },
+                                                              )}`}
+                                                    </span>
+                                                </div>
+
+                                                <div className="attendance-status">
+                                                    <span
+                                                        className={
+                                                            estado.toUpperCase() ===
+                                                            "PAGADO"
+                                                                ? "status present"
+                                                                : "status pending"
+                                                        }
+                                                    >
+                                                        {estado}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -2113,9 +2207,7 @@ const ProfesorDashboard = () => {
                         <div className="dashboard-card">
                             <div className="card-header">
                                 <div>
-                                    <span className="section-label">
-                                        REPORTES
-                                    </span>
+                                    <span className="section-label">REPORTES</span>
                                     <h2>Reportes de alumnos</h2>
                                     <p>
                                         Buscá por nombre, apellido, ID o DNI y
@@ -2207,14 +2299,11 @@ const ProfesorDashboard = () => {
                                                 </strong>
 
                                                 <span>
-                                                    ID Alumno:{" "}
-                                                    {alumno.id_alumno}
+                                                    ID Alumno: {alumno.id_alumno}
                                                 </span>
 
                                                 {alumno.dni && (
-                                                    <span>
-                                                        DNI: {alumno.dni}
-                                                    </span>
+                                                    <span>DNI: {alumno.dni}</span>
                                                 )}
                                             </div>
                                         </div>
@@ -2231,9 +2320,7 @@ const ProfesorDashboard = () => {
                         <div className="dashboard-card">
                             <div className="card-header">
                                 <div>
-                                    <span className="section-label">
-                                        PERFIL
-                                    </span>
+                                    <span className="section-label">PERFIL</span>
                                     <h2>Mi perfil</h2>
                                     <p>
                                         Información personal y datos de tu
@@ -2261,8 +2348,7 @@ const ProfesorDashboard = () => {
                                 <div className="profile-row">
                                     <span>Teléfono:</span>
                                     <strong>
-                                        {profesor?.telefono ??
-                                            "No registrado"}
+                                        {profesor?.telefono ?? "No registrado"}
                                     </strong>
                                 </div>
 
