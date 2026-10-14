@@ -5,14 +5,18 @@ export interface SaldoCredito {
   nombre?: string;
   tipo_credito?: string;
   creditos_disponibles?: number | string;
+  saldo?: number | string;
   [key: string]: unknown;
 }
 
 export interface MovimientoCredito {
   id_movimiento?: number;
+  tipo_credito?: string;
   tipo_movimiento?: string;
+  tipo?: string;
   cantidad?: number | string;
   fecha?: string;
+  paquete?: string | { nombre?: string; [key: string]: unknown } | null;
   descripcion?: string;
   [key: string]: unknown;
 }
@@ -41,7 +45,6 @@ export async function obtenerSaldo(
     `/creditos/alumno/${idAlumno}/saldo`
   );
 
-  // Admite tanto un array directo como una respuesta envuelta en .data.
   if (Array.isArray(data)) {
     return data as SaldoCredito[];
   }
@@ -57,8 +60,7 @@ export async function obtenerSaldo(
  * Obtiene el resumen de créditos.
  *
  * El endpoint de saldo no garantiza que incluya movimientos.
- * Por eso, los movimientos quedan vacíos hasta conectar
- * el endpoint real del historial.
+ * El historial queda vacío hasta conectar su endpoint real.
  */
 export async function obtenerResumenCreditos(
   idAlumno: number

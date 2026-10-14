@@ -3791,42 +3791,125 @@ export default function AlumnoDashboard() {
                 <div className="dashboard-warning">⚠️ {errorCreditos}</div>
               ) : (
                 <>
+                  
                   <div className="stats-grid">
-                    {resumenCreditos.saldos.map((saldo) => (
-                      <div className="stat-card" key={saldo.id_tipo_credito}>
+                    {resumenCreditos.saldos.map((saldo, index) => (
+                      <div
+                        className="stat-card"
+                        key={saldo.id_tipo_credito ?? index}
+                      >
                         <div className="stat-icon">🎟️</div>
-                        <div><span>{saldo.tipo_credito}</span><strong>{saldo.saldo}</strong><small>créditos disponibles</small></div>
+                        <div>
+                          <span>
+                            {String(
+                              saldo.tipo_credito ??
+                              saldo.nombre ??
+                              "Créditos"
+                            )}
+                          </span>
+                          <strong>
+                            {Number(
+                              saldo.creditos_disponibles ??
+                              saldo.saldo ??
+                              0
+                            )}
+                          </strong>
+                          <small>créditos disponibles</small>
+                        </div>
                       </div>
                     ))}
+
                     {resumenCreditos.saldos.length === 0 && (
-                      <div className="empty-state"><p>No hay tipos de crédito activos o todavía no tenés movimientos.</p></div>
+                      <div className="empty-state">
+                        <p>
+                          No hay créditos disponibles o todavía no tenés saldos registrados.
+                        </p>
+                      </div>
                     )}
                   </div>
-                  <div style={{display:"flex", justifyContent:"flex-end", marginTop:"20px"}}>
-                    <button type="button" className="secondary-button" onClick={() => exportarCSV("mis_movimientos_creditos.csv", resumenCreditos.movimientos.map((m) => ({
-                      fecha: fechaLocal(m.fecha),
-                      tipo_credito: m.tipo_credito,
-                      tipo_movimiento: m.tipo,
-                      cantidad: m.cantidad,
-                      paquete: m.paquete ?? "",
-                      descripcion: m.descripcion ?? "",
-                    })))}>⬇️ Exportar movimientos CSV</button>
+
+                  <div style={{display:"flex", justifyContent:"flex-end", marginTop:"20px"}}>        
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() =>
+                        exportarCSV(
+                          "mis_movimientos_creditos.csv",
+                          resumenCreditos.movimientos.map((m) => ({
+                            fecha: fechaLocal(m.fecha),
+                            tipo_credito: String(m.tipo_credito ?? ""),
+                            tipo_movimiento: String(
+                              m.tipo_movimiento ?? m.tipo ?? ""
+                            ),
+                            cantidad: Number(m.cantidad ?? 0),
+                            paquete:
+                              typeof m.paquete === "string"
+                                ? m.paquete
+                                : typeof m.paquete === "object" &&
+                                    m.paquete !== null
+                                  ? String(m.paquete.nombre ?? "")
+                                  : "",
+                            descripcion: String(m.descripcion ?? ""),
+                          }))
+                        )
+                      }
+                    >
+                      ⬇️ Exportar movimientos CSV
+                    </button>
+
                   </div>
-                  <div className="table-responsive" style={{marginTop:"16px"}}>
+                  <div className="table-responsive" style={{ marginTop: "16px" }}>
                     <table className="attendance-table">
-                      <thead><tr><th>Fecha</th><th>Tipo</th><th>Movimiento</th><th>Cantidad</th><th>Paquete</th><th>Detalle</th></tr></thead>
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Tipo</th>
+                          <th>Movimiento</th>
+                          <th>Cantidad</th>
+                          <th>Paquete</th>
+                          <th>Detalle</th>
+                        </tr>
+                      </thead>
+
                       <tbody>
-                        {resumenCreditos.movimientos.map((m) => (
-                          <tr key={m.id_movimiento}>
-                            <td>{fechaLocal(m.fecha)}</td>
-                            <td>{m.tipo_credito}</td>
-                            <td>{m.tipo}</td>
-                            <td>{m.cantidad > 0 ? `+${m.cantidad}` : m.cantidad}</td>
-                            <td>{m.paquete ?? "—"}</td>
-                            <td>{m.descripcion ?? "—"}</td>
+                        {resumenCreditos.movimientos.map((m, index) => {
+                          const cantidad = Number(m.cantidad ?? 0);
+
+                          const paquete =
+                            typeof m.paquete === "string"
+                              ? m.paquete
+                              : typeof m.paquete === "object" && m.paquete !== null
+                                ? String(m.paquete.nombre ?? "—")
+                                : "—";
+
+                          return (
+                            <tr key={m.id_movimiento ?? index}>
+                              <td>{fechaLocal(m.fecha)}</td>
+
+                              <td>{String(m.tipo_credito ?? "—")}</td>
+
+                              <td>
+                                {String(m.tipo_movimiento ?? m.tipo ?? "—")}
+                              </td>
+
+                              <td>
+                                {cantidad > 0 ? `+${cantidad}` : cantidad}
+                              </td>
+
+                              <td>{paquete}</td>
+
+                              <td>{String(m.descripcion ?? "—")}</td>
+                            </tr>
+                          );
+                        })}
+
+                        {resumenCreditos.movimientos.length === 0 && (
+                          <tr>
+                            <td colSpan={6}>
+                              Todavía no hay movimientos de créditos.
+                            </td>
                           </tr>
-                        ))}
-                        {resumenCreditos.movimientos.length === 0 && <tr><td colSpan={6}>Todavía no hay movimientos de créditos.</td></tr>}
+                        )}
                       </tbody>
                     </table>
                   </div>
