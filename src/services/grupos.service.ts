@@ -212,3 +212,14 @@ export const obtenerClasePorId = async (
 
     return response.data;
 };
+
+// Obtener alumnos inscriptos en un grupo
+export async function obtenerAlumnosPorGrupo(
+    idGrupo: number
+): Promise<AlumnoClase[]> {
+    const response = await api.get(
+        `/grupos/${idGrupo}/alumnos`
+    );
+
+    return response.data;
+}
