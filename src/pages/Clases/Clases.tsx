@@ -30,7 +30,10 @@ export default function Clases(){
 
             try{
 
-                const data = await obtenerDisciplinas();
+                const data =
+                    await obtenerDisciplinas();
+
+
                 setDisciplinas(data);
 
 
@@ -97,7 +100,11 @@ export default function Clases(){
                                 </h2>
 
 
-                                <p>{item.descripcion ?? "Sin descripción disponible."}</p>
+                                <p>
+                                    {
+                                        item.descripcion
+                                    }
+                                </p>
 
 
                                 <button>

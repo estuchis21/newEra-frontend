@@ -16,10 +16,6 @@ import {
 
 import "./AlumnoDashboard.css";
 
-import { exportarCSV, fechaLocal, estadoNormalizado } from "../../utils/exportarCsv";
-import { obtenerResumenCreditos, type ResumenCreditos } from "../../services/creditos.service";
-
-
 
 
 import {
@@ -129,14 +125,6 @@ export default function AlumnoDashboard() {
 
 
   const [seccion, setSeccion] = useState("inicio");
-
-
-  const [filtroEstadoAsistencia, setFiltroEstadoAsistencia] = useState("todos");
-  const [resumenCreditos, setResumenCreditos] = useState<ResumenCreditos>({ saldos: [], movimientos: [] });
-  const [loadingCreditos, setLoadingCreditos] = useState(false);
-  const [errorCreditos, setErrorCreditos] = useState("");
-  const [busquedaGrupo, setBusquedaGrupo] = useState("");
-
 
 
 
@@ -273,33 +261,6 @@ export default function AlumnoDashboard() {
   // =====================================================
 
 
-  // =====================================================
-  // CARGAR RESUMEN DE CRÉDITOS
-  // =====================================================
-  useEffect(() => {
-    if (!idAlumno) return;
-    let cancelado = false;
-
-    const cargarCreditos = async () => {
-      try {
-        setLoadingCreditos(true);
-        setErrorCreditos("");
-        const resumen = await obtenerResumenCreditos(idAlumno);
-        if (!cancelado) setResumenCreditos(resumen);
-      } catch (error) {
-        console.error("Error cargando créditos:", error);
-        if (!cancelado) {
-          setErrorCreditos("No se pudo cargar el saldo de créditos.");
-          setResumenCreditos({ saldos: [], movimientos: [] });
-        }
-      } finally {
-        if (!cancelado) setLoadingCreditos(false);
-      }
-    };
-
-    void cargarCreditos();
-    return () => { cancelado = true; };
-  }, [idAlumno]);
 
   useEffect(() => {
 
@@ -1838,35 +1799,25 @@ export default function AlumnoDashboard() {
 
 
           <button
-            className={seccion === "creditos" ? "active" : ""}
-            onClick={() => setSeccion("creditos")}
-            type="button"
-          >
-            🎟️
-            <span>Mis créditos</span>
-          </button>
 
-          <button
-            className={seccion === "calendario" ? "active" : ""}
-            onClick={() => setSeccion("calendario")}
-            type="button"
-          >
-            🗓️
-            <span>Mi calendario</span>
-          </button>
+            className={
 
-          <button
-            className={seccion === "reportes" ? "active" : ""}
-            onClick={() => setSeccion("reportes")}
-            type="button"
-          >
-            📊
-            <span>Mis reportes</span>
-          </button>
+              seccion === "perfil"
 
-          <button onClick={() => setSeccion("perfil")}>
-            👤 Perfil
-          </button>
+                ? "active"
+
+                : ""
+
+            }
+
+            onClick={() =>
+
+              setSeccion("perfil")
+
+            }
+
+          >
+
             👤
 
             <span>
@@ -1875,6 +1826,7 @@ export default function AlumnoDashboard() {
 
             </span>
 
+          </button>
 
 
 
@@ -1947,14 +1899,6 @@ export default function AlumnoDashboard() {
               {seccion === "grupos" &&
 
                 "Mis grupos"}
-
-
-              {seccion === "calendario" && "Mi calendario"}
-
-              {seccion === "creditos" && "Mis créditos"}
-
-              {seccion === "reportes" && "Mis reportes"}
-
 
 
 
@@ -2770,22 +2714,6 @@ export default function AlumnoDashboard() {
 
                   </p>
 
-                  <div className="dashboard-filters" style={{display:"flex", gap:"12px", flexWrap:"wrap", marginTop:"12px"}}>
-                    <label>
-                      Estado de asistencia
-                      <select value={filtroEstadoAsistencia} onChange={(e) => setFiltroEstadoAsistencia(e.target.value)}>
-                        <option value="todos">Todos</option>
-                        <option value="presente">Presentes</option>
-                        <option value="ausente">Ausentes</option>
-                        <option value="tarde">Llegadas tarde</option>
-                      </select>
-                    </label>
-                    <button type="button" className="secondary-button" onClick={() => exportarCSV("mis_asistencias.csv", asistencias.map((a) => ({
-                      fecha: fechaLocal(a.fecha), disciplina: a.disciplina ?? "", grupo: a.grupo ?? "",
-                      estado: a.estado, observaciones: a.observaciones ?? "",
-                    })))}>Exportar CSV</button>
-                  </div>
-
 
 
                 </div>
@@ -2932,11 +2860,7 @@ export default function AlumnoDashboard() {
 
 
 
-                      {asistencias.filter((asistencia) => {
-                        if (filtroEstadoAsistencia === "todos") return true;
-                        return estadoNormalizado(asistencia.estado).includes(filtroEstadoAsistencia);
-                      }).map(
-
+                      {asistencias.map(
 
                         (asistencia) => (
 
@@ -3132,17 +3056,6 @@ export default function AlumnoDashboard() {
 
                   </p>
 
-                  <label className="dashboard-search">
-                    Buscar por disciplina, nivel o profesor
-                    <input
-                      type="search"
-                      value={busquedaGrupo}
-                      onChange={(e) => setBusquedaGrupo(e.target.value)}
-                      placeholder="Ej.: inglés, inicial..."
-                    />
-                  </label>
-
-
 
 
                 </div>
@@ -3235,13 +3148,7 @@ export default function AlumnoDashboard() {
 
 
 
-
-                  {gruposDisponibles.filter((grupo) =>
-                    `${grupo.disciplina} ${grupo.nivel} ${grupo.profesor ?? ""}`
-                      .toLocaleLowerCase("es-AR")
-                      .includes(busquedaGrupo.toLocaleLowerCase("es-AR"))
-                  ).map(
-
+                  {gruposDisponibles.map(
 
                     (grupo) => (
 
@@ -3761,292 +3668,6 @@ export default function AlumnoDashboard() {
         )}
 
         {/* =================================================
-            CRÉDITOS
-        ================================================= */}
-        {seccion === "creditos" && (
-          <section className="dashboard-section">
-            <div className="dashboard-card">
-              <div className="card-header">
-                <div>
-                  <h3>Saldo y movimientos de créditos</h3>
-                  <p>Consultá los créditos disponibles y su historial de movimientos.</p>
-                </div>
-                <button type="button" className="secondary-button" onClick={async () => {
-                  if (!idAlumno) return;
-                  try {
-                    setLoadingCreditos(true);
-                    const resumen = await obtenerResumenCreditos(idAlumno);
-                    setResumenCreditos(resumen);
-                    setErrorCreditos("");
-                  } catch {
-                    setErrorCreditos("No se pudo actualizar el saldo de créditos.");
-                  } finally {
-                    setLoadingCreditos(false);
-                  }
-                }}>Actualizar</button>
-              </div>
-              {loadingCreditos ? (
-                <div className="empty-state"><p>Cargando créditos...</p></div>
-              ) : errorCreditos ? (
-                <div className="dashboard-warning">⚠️ {errorCreditos}</div>
-              ) : (
-                <>
-                  
-                  <div className="stats-grid">
-                    {resumenCreditos.saldos.map((saldo, index) => (
-                      <div
-                        className="stat-card"
-                        key={saldo.id_tipo_credito ?? index}
-                      >
-                        <div className="stat-icon">🎟️</div>
-                        <div>
-                          <span>
-                            {String(
-                              saldo.tipo_credito ??
-                              saldo.nombre ??
-                              "Créditos"
-                            )}
-                          </span>
-                          <strong>
-                            {Number(
-                              saldo.creditos_disponibles ??
-                              saldo.saldo ??
-                              0
-                            )}
-                          </strong>
-                          <small>créditos disponibles</small>
-                        </div>
-                      </div>
-                    ))}
-
-                    {resumenCreditos.saldos.length === 0 && (
-                      <div className="empty-state">
-                        <p>
-                          No hay créditos disponibles o todavía no tenés saldos registrados.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{display:"flex", justifyContent:"flex-end", marginTop:"20px"}}>        
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() =>
-                        exportarCSV(
-                          "mis_movimientos_creditos.csv",
-                          resumenCreditos.movimientos.map((m) => ({
-                            fecha: fechaLocal(m.fecha),
-                            tipo_credito: String(m.tipo_credito ?? ""),
-                            tipo_movimiento: String(
-                              m.tipo_movimiento ?? m.tipo ?? ""
-                            ),
-                            cantidad: Number(m.cantidad ?? 0),
-                            paquete:
-                              typeof m.paquete === "string"
-                                ? m.paquete
-                                : typeof m.paquete === "object" &&
-                                    m.paquete !== null
-                                  ? String(m.paquete.nombre ?? "")
-                                  : "",
-                            descripcion: String(m.descripcion ?? ""),
-                          }))
-                        )
-                      }
-                    >
-                      ⬇️ Exportar movimientos CSV
-                    </button>
-
-                  </div>
-                  <div className="table-responsive" style={{ marginTop: "16px" }}>
-                    <table className="attendance-table">
-                      <thead>
-                        <tr>
-                          <th>Fecha</th>
-                          <th>Tipo</th>
-                          <th>Movimiento</th>
-                          <th>Cantidad</th>
-                          <th>Paquete</th>
-                          <th>Detalle</th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {resumenCreditos.movimientos.map((m, index) => {
-                          const cantidad = Number(m.cantidad ?? 0);
-
-                          const paquete =
-                            typeof m.paquete === "string"
-                              ? m.paquete
-                              : typeof m.paquete === "object" && m.paquete !== null
-                                ? String(m.paquete.nombre ?? "—")
-                                : "—";
-
-                          return (
-                            <tr key={m.id_movimiento ?? index}>
-                              <td>{fechaLocal(m.fecha)}</td>
-
-                              <td>{String(m.tipo_credito ?? "—")}</td>
-
-                              <td>
-                                {String(m.tipo_movimiento ?? m.tipo ?? "—")}
-                              </td>
-
-                              <td>
-                                {cantidad > 0 ? `+${cantidad}` : cantidad}
-                              </td>
-
-                              <td>{paquete}</td>
-
-                              <td>{String(m.descripcion ?? "—")}</td>
-                            </tr>
-                          );
-                        })}
-
-                        {resumenCreditos.movimientos.length === 0 && (
-                          <tr>
-                            <td colSpan={6}>
-                              Todavía no hay movimientos de créditos.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* =================================================
-            CALENDARIO
-        ================================================= */}
-        {seccion === "calendario" && (
-          <section className="dashboard-section">
-            <div className="dashboard-card">
-              <div className="card-header">
-                <div>
-                  <h3>Mi calendario semanal</h3>
-                  <p>Horarios informados en los grupos en los que estás inscripto.</p>
-                </div>
-              </div>
-              {loadingGrupos ? (
-                <div className="empty-state"><p>Cargando horarios...</p></div>
-              ) : grupos.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-icon">🗓️</div>
-                  <h3>Todavía no tenés grupos</h3>
-                  <p>Cuando te inscribas en un grupo, sus horarios aparecerán acá.</p>
-                  <button type="button" className="primary-button" onClick={() => setSeccion("inscribirme")}>Explorar grupos</button>
-                </div>
-              ) : (
-                <div className="groups-grid">
-                  {grupos.flatMap((grupo) =>
-                    (grupo.horarios ?? []).map((horario, indice) => ({
-                      ...horario,
-                      id_grupo: grupo.id_grupo,
-                      disciplina: grupo.disciplina,
-                      nivel: grupo.nivel,
-                      key: `${grupo.id_grupo}-${horario.id_horario ?? indice}`,
-                    })),
-                  ).sort((a, b) =>
-                    String(a.dia_semana).localeCompare(String(b.dia_semana), "es"),
-                  ).map((horario) => (
-                    <article className="group-card" key={horario.key}>
-                      <div className="group-card-header">
-                        <span>{horario.dia_semana}</span>
-                        <span>{horario.hora_inicio}–{horario.hora_fin}</span>
-                      </div>
-                      <h3>{horario.disciplina}</h3>
-                      <p>Nivel: {horario.nivel}</p>
-                      <p>Grupo #{horario.id_grupo}</p>
-                    </article>
-                  ))}
-                  {grupos.every((grupo) => !grupo.horarios?.length) && (
-                    <div className="empty-state">
-                      <p>Tus grupos no tienen horarios cargados todavía.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* =================================================
-            REPORTES Y EXPORTACIÓN
-        ================================================= */}
-        {seccion === "reportes" && (
-          <section className="dashboard-section">
-            <div className="dashboard-card">
-              <div className="card-header">
-                <div>
-                  <h3>Mis reportes</h3>
-                  <p>Descargá una copia de tus registros para consultarlos sin conexión.</p>
-                </div>
-              </div>
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-icon">📚</div>
-                  <div><span>Grupos activos en tu cuenta</span><strong>{grupos.length}</strong></div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon">✅</div>
-                  <div><span>Registros de asistencia</span><strong>{asistencias.length}</strong></div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon">💳</div>
-                  <div><span>Cuotas registradas</span><strong>{cuotas.length}</strong></div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon">⏳</div>
-                  <div>
-                    <span>Cuotas pendientes</span>
-                    <strong>{cuotas.filter((cuota) => {
-                      const estado = estadoNormalizado((cuota as any).estado);
-                      return !["pagado", "paga", "paid", "aprobado"].includes(estado) && !(cuota as any).fecha_pago;
-                    }).length}</strong>
-                  </div>
-                </div>
-              </div>
-              <div className="dashboard-actions" style={{display:"flex", flexWrap:"wrap", gap:"12px", marginTop:"22px"}}>
-                <button type="button" className="primary-button" onClick={() => exportarCSV("mis_asistencias.csv", asistencias.map((a) => ({
-                  fecha: fechaLocal(a.fecha),
-                  disciplina: a.disciplina ?? "",
-                  grupo: a.grupo ?? "",
-                  estado: a.estado,
-                  observaciones: a.observaciones ?? "",
-                })))}>⬇️ Descargar asistencias CSV</button>
-                <button type="button" className="primary-button" onClick={() => exportarCSV("mis_cuotas.csv", cuotas.map((c) => ({
-                  id_cuota: c.id_cuota,
-                  mes: c.mes ?? "",
-                  anio: c.anio ?? "",
-                  monto: c.monto ?? c.paquete?.precio ?? "",
-                  estado: c.estado ?? "",
-                  vencimiento: fechaLocal(c.fecha_vencimiento),
-                  fecha_pago: fechaLocal(c.fecha_pago),
-                  paquete: c.paquete?.nombre ?? "",
-                  creditos: c.paquete?.creditos ?? "",
-                })))}>⬇️ Descargar cuotas CSV</button>
-                <button type="button" className="secondary-button" onClick={() => exportarCSV("mis_grupos.csv", grupos.map((g) => ({
-                  id_grupo: g.id_grupo,
-                  disciplina: g.disciplina,
-                  nivel: g.nivel,
-                  profesor: g.profesor ?? "",
-                  horarios: (g.horarios ?? []).map((h) => `${h.dia_semana} ${h.hora_inicio}-${h.hora_fin}`).join(" | "),
-                })))}>⬇️ Descargar mis grupos CSV</button>
-              </div>
-              <p className="dashboard-help" style={{marginTop:"16px"}}>
-                Los archivos contienen únicamente los datos que ya devuelve la aplicación. El estado definitivo de un pago debe verificarse con el backend y Mercado Pago.
-              </p>
-            </div>
-          </section>
-        )}
-
-        {/* =================================================
-=======
->>>>>>> fd881ab73b9233ff5638cbcfe54526df9aea71e6
 
             PERFIL
 
@@ -4275,5 +3896,7 @@ export default function AlumnoDashboard() {
 
 
   );
+
+
 
 }
