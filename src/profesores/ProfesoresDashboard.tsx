@@ -1117,12 +1117,13 @@ const ProfesorDashboard = () => {
                                                     )
                                                 }
                                             >
-                                                <option>Lunes</option>
-                                                <option>Martes</option>
-                                                <option>Miércoles</option>
-                                                <option>Jueves</option>
-                                                <option>Viernes</option>
-                                                <option>Sábado</option>
+                                                <option>lunes</option>
+                                                <option>martes</option>
+                                                <option>miércoles</option>
+                                                <option>jueves</option>
+                                                <option>viernes</option>
+                                                <option>sábado</option>
+                                                <option>domingo</option>
                                             </select>
                                         </div>
 
