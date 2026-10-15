@@ -2,7 +2,7 @@ import { useState } from "react";
 import "./Registro.css";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
-import { registrarAlumno } from "../../services/auth.service";
+import { registrarAlumno } from "../services/auth.service";
 
 export default function Registro() {
 

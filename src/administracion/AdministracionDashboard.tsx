@@ -8,7 +8,7 @@ import {
   obtenerGruposAdmin,
   obtenerPagosRecientesAdmin,
   type AdminDashboard,
-} from "..";
+} from "../services/administracion.service";
 import "./AdministracionDashboard.css";
 
 type Seccion = "inicio" | "alumnos" | "grupos" | "cuotas" | "pagos";

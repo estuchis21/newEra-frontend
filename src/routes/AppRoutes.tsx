@@ -1,15 +1,15 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Home from "../pages/Home/Home";
-import Login from "../pages/Login/Login";
-import Registro from "../pages/Registro/Registro";
-import Clases from "../pages/Clases/Clases";
-import AlumnoDashboard from "../pages/alumnos/AlumnoDashboard";
-import ProfesoresDashboard from "../pages/profesores/ProfesoresDashboard";
+import Home from "..//Home/Home";
+import Login from "..//Login/Login";
+import Registro from "../Registro/Registro";
+import Clases from "../Clases/Clases";
+import AlumnoDashboard from "../alumnos/AlumnoDashboard";
+import ProfesoresDashboard from "../profesores/ProfesoresDashboard";
 import Navbar from "../components/Navbar/Navbar";
-import RecuperarPassword from "../pages/recuperar-password/RecuperarPassword";
-import ResetPassword from "../pages/recuperar-password/ResetPassword";
-import AdministracionDashboard from "../pages/administracion/AdministracionDashboard";
+import RecuperarPassword from "../recuperar-password/RecuperarPassword";
+import ResetPassword from "../recuperar-password/ResetPassword";
+import AdministracionDashboard from "../administracion/AdministracionDashboard";
 
 export default function AppRoutes() {
 

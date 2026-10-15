@@ -12,7 +12,7 @@ import Swal from "sweetalert2";
 
 import {
     obtenerProfesorPorUsuario,
-} from "../../services/profesores.service";
+} from "../services/profesores.service";
 
 import {
     crearGrupo,
@@ -22,21 +22,21 @@ import {
     type AlumnoClase,
     type Clase,
     type Grupo,
-} from "../../services/grupos.service";
+} from "../services/grupos.service";
 
 import {
     obtenerAsistenciaAlumnoClase,
     registrarAsistencia,
     type Asistencia,
-} from "../../services/asistencia.service";
+} from "../services/asistencia.service";
 
 import {
     obtenerDisciplinas,
-} from "../../services/disciplinas.service";
+} from "../services/disciplinas.service";
 
 import {
     obtenerHorariosGrupo,
-} from "../../services/horarios.service";
+} from "../services/horarios.service";
 
 import "./ProfesoresDashboard.css";
 

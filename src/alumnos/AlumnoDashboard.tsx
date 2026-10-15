@@ -10,7 +10,7 @@ import {
 
   obtenerIdAlumnoPorUsuario,
 
-} from "../../services/auth.service";
+} from "../services/auth.service";
 
 
 
@@ -30,7 +30,7 @@ import {
 
   type Grupo,
 
-} from "../../services/grupos.service";
+} from "../services/grupos.service";
 
 
 
@@ -40,7 +40,7 @@ import {
 
   type Asistencia,
 
-} from "../../services/asistencia.service";
+} from "../services/asistencia.service";
 
 
 
@@ -52,7 +52,7 @@ import {
 
   type Cuota,
 
-} from "../../services/cuotas-pagos.service";
+} from "../services/cuotas-pagos.service";
 
 
 

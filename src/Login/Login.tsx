@@ -4,7 +4,7 @@ import "./Login.css";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 
-import { login } from "../../services/auth.service";
+import { login } from "../services/auth.service";
 
 export default function Login() {
 

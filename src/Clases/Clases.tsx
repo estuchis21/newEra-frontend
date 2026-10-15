@@ -3,14 +3,14 @@ import {
     useState
 } from "react";
 
-import type { Disciplina } from "../../types/disciplina";
+import type { Disciplina } from "../types/disciplina";
 
 import "./Clases.css";
 
 
 import {
     obtenerDisciplinas,
-} from "../../services/disciplinas.service";
+} from "../services/disciplinas.service";
 
 
 export default function Clases(){

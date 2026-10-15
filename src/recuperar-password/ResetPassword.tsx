@@ -11,7 +11,7 @@ import {
 
 import {
   restablecerContrasena,
-} from "../../services/auth.service";
+} from "../services/auth.service";
 
 
 export default function ResetPassword() {

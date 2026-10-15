@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 import {
   solicitarRecuperacion,
-} from "../../services/auth.service";
+} from "../services/auth.service";
 
 export default function RecuperarPassword() {
 
