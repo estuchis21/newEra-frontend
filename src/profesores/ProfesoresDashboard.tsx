@@ -9,6 +9,7 @@ import {
     obtenerAlumnosPorClase,
     obtenerClasesProfesor,
     obtenerGruposProfesor,
+    obtenerAlumnosPorGrupo,
     type AlumnoClase,
     type Clase,
     type Grupo,
@@ -350,64 +351,57 @@ const ProfesorDashboard = () => {
 
     // CARGAR ALUMNOS DE LOS GRUPOS
     const cargarAlumnosGrupos = async () => {
-        if (grupos.length === 0 || clases.length === 0) {
-            setAlumnosPorGrupo({});
-            return;
-        }
+            if (grupos.length === 0) {
+                setAlumnosPorGrupo({});
+                return;
+            }
 
-        try {
-            setLoadingAlumnosGrupos(true);
+            try {
+                setLoadingAlumnosGrupos(true);
 
-            const resultados = await Promise.all(
-                grupos.map(async (grupo) => {
-                    const clasesGrupo = clases.filter(
-                        (clase) =>
-                            Number(clase.id_grupo) === Number(grupo.id_grupo),
-                    );
-
-                    const mapaAlumnos = new Map<number, AlumnoClase>();
-
-                    for (const clase of clasesGrupo) {
+                const resultados = await Promise.all(
+                    grupos.map(async (grupo) => {
                         try {
-                            const alumnosClase = await obtenerAlumnosPorClase(
-                                clase.id_clase,
+                            const alumnos = await obtenerAlumnosPorGrupo(
+                                Number(grupo.id_grupo),
                             );
 
-                            if (Array.isArray(alumnosClase)) {
-                                alumnosClase.forEach((alumno) => {
-                                    const idAlumno = Number(alumno.id_alumno);
+                            console.log(
+                                `Alumnos del grupo ${grupo.id_grupo}:`,
+                                alumnos,
+                            );
 
-                                    if (esIdValido(idAlumno)) {
-                                        mapaAlumnos.set(idAlumno, alumno);
-                                    }
-                                });
-                            }
+                            return {
+                                idGrupo: Number(grupo.id_grupo),
+                                alumnos: Array.isArray(alumnos) ? alumnos : [],
+                            };
                         } catch (error) {
                             console.error(
-                                `Error obteniendo alumnos de clase ${clase.id_clase}:`,
+                                `Error obteniendo alumnos del grupo ${grupo.id_grupo}:`,
                                 error,
                             );
+
+                            return {
+                                idGrupo: Number(grupo.id_grupo),
+                                alumnos: [],
+                            };
                         }
-                    }
+                    }),
+                );
 
-                    return {
-                        idGrupo: grupo.id_grupo,
-                        alumnos: Array.from(mapaAlumnos.values()),
-                    };
-                }),
-            );
+                const mapa: Record<number, AlumnoClase[]> = {};
 
-            const mapa: Record<number, AlumnoClase[]> = {};
+                resultados.forEach(({ idGrupo, alumnos }) => {
+                    mapa[idGrupo] = alumnos;
+                });
 
-            resultados.forEach((resultado) => {
-                mapa[resultado.idGrupo] = resultado.alumnos;
-            });
+                console.log("Mapa de alumnos por grupo:", mapa);
 
-            setAlumnosPorGrupo(mapa);
-        } finally {
-            setLoadingAlumnosGrupos(false);
-        }
-    };
+                setAlumnosPorGrupo(mapa);
+            } finally {
+                setLoadingAlumnosGrupos(false);
+            }
+        };
 
     // CARGAR ALUMNOS Y ASISTENCIAS DE UNA CLASE
     const cargarAlumnosClase = async (idClase: number) => {
