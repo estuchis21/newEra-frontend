@@ -790,6 +790,10 @@ export default function AlumnoDashboard() {
     `${nombreAlumno} ${apellidoAlumno}`.trim();
 
   // =====================================================
+// FILTRAR GRUPOS EN LOS QUE YA ESTÁ INSCRIPTO
+// =====================================================
+
+  // =====================================================
   // RENDER
   // =====================================================
 
@@ -1167,78 +1171,104 @@ export default function AlumnoDashboard() {
                 </div>
               </div>
 
-              {loadingGruposDisponibles ? (
-                <div className="empty-state">
-                  <p>Cargando grupos disponibles...</p>
-                </div>
-              ) : errorGruposDisponibles ? (
-                <div className="dashboard-warning" role="alert">
-                  ⚠️ {errorGruposDisponibles}
-                </div>
-              ) : gruposDisponibles.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-icon">📚</div>
-                  <h3>No hay grupos disponibles</h3>
-                  <p>
-                    En este momento no hay grupos disponibles para inscribirse.
-                  </p>
-                </div>
-              ) : (
-                <div className="groups-grid">
-                  {gruposDisponibles.map((grupo) => (
-                    <div
-                      className="group-card"
-                      key={grupo.id_grupo}
-                    >
-                      <div className="group-card-header">
-                        <span>{grupo.disciplina}</span>
-                        <span>{grupo.nivel}</span>
-                      </div>
+              {/*
+                Obtenemos los identificadores de los grupos
+                en los que el alumno ya está inscripto.
+              */}
+              {(() => {
+                const idsGruposInscritos = new Set(
+                  grupos.map((grupo) => Number(grupo.id_grupo))
+                );
 
-                      <h3>{grupo.disciplina}</h3>
-                      <p>Nivel: {grupo.nivel}</p>
+                const gruposDisponiblesFiltrados =
+                  gruposDisponibles.filter(
+                    (grupo) =>
+                      grupo.activo !== false &&
+                      !idsGruposInscritos.has(
+                        Number(grupo.id_grupo)
+                      )
+                  );
 
-                      {grupo.profesor && (
-                        <p>👨‍🏫 Profesor: {grupo.profesor}</p>
-                      )}
+                return loadingGruposDisponibles ? (
+                  <div className="empty-state">
+                    <p>Cargando grupos disponibles...</p>
+                  </div>
+                ) : errorGruposDisponibles ? (
+                  <div
+                    className="dashboard-warning"
+                    role="alert"
+                  >
+                    ⚠️ {errorGruposDisponibles}
+                  </div>
+                ) : gruposDisponiblesFiltrados.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-icon">📚</div>
+                    <h3>No hay grupos disponibles</h3>
+                    <p>
+                      En este momento no hay grupos disponibles
+                      para inscribirse.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="groups-grid">
+                    {gruposDisponiblesFiltrados.map((grupo) => (
+                      <div
+                        className="group-card"
+                        key={grupo.id_grupo}
+                      >
+                        <div className="group-card-header">
+                          <span>{grupo.disciplina}</span>
+                          <span>{grupo.nivel}</span>
+                        </div>
 
-                      {grupo.horarios &&
-                        grupo.horarios.length > 0 && (
-                          <div className="group-schedule">
-                            {grupo.horarios.map((horario) => (
-                              <div key={horario.id_horario}>
-                                📅 {horario.dia_semana}
-                                <br />
-                                🕐 {horario.hora_inicio}
-                                {" - "}
-                                {horario.hora_fin}
-                              </div>
-                            ))}
-                          </div>
+                        <h3>{grupo.disciplina}</h3>
+                        <p>Nivel: {grupo.nivel}</p>
+
+                        {grupo.profesor && (
+                          <p>
+                            👨‍🏫 Profesor: {grupo.profesor}
+                          </p>
                         )}
 
-                      <button
-                        type="button"
-                        className="primary-button"
-                        disabled={
-                          inscribiendo === grupo.id_grupo
-                        }
-                        onClick={() =>
-                          handleInscribirse(grupo.id_grupo)
-                        }
-                      >
-                        {inscribiendo === grupo.id_grupo
-                          ? "Inscribiendo..."
-                          : "Inscribirme"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                        {grupo.horarios &&
+                          grupo.horarios.length > 0 && (
+                            <div className="group-schedule">
+                              {grupo.horarios.map((horario) => (
+                                <div
+                                  key={horario.id_horario}
+                                >
+                                  📅 {horario.dia_semana}
+                                  <br />
+                                  🕐 {horario.hora_inicio}
+                                  {" - "}
+                                  {horario.hora_fin}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                        <button
+                          type="button"
+                          className="primary-button"
+                          disabled={
+                            inscribiendo === grupo.id_grupo
+                          }
+                          onClick={() =>
+                            handleInscribirse(grupo.id_grupo)
+                          }
+                        >
+                          {inscribiendo === grupo.id_grupo
+                            ? "Inscribiendo..."
+                            : "Inscribirme"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </section>
         )}
-
         {/* CUOTAS */}
 
         {seccion === "cuotas" && (
