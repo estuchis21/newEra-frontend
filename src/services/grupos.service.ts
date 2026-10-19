@@ -97,16 +97,16 @@ export const obtenerGruposDisponibles = async (): Promise<Grupo[]> => {
 // INSCRIBIRSE A UN GRUPO
 // =====================================================
 
+
 export const inscribirseGrupo = async (
     idAlumno: number,
     idGrupo: number
 ) => {
-
     const response = await api.post(
         "/inscripciones",
         {
-            idAlumno,
-            idGrupo,
+            id_alumno: Number(idAlumno),
+            id_grupo: Number(idGrupo),
         }
     );
 
