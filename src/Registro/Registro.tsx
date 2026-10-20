@@ -277,15 +277,19 @@ export default function Registro() {
                     required
                 />
 
+
                 <select
                     name="id_rol"
                     value={form.id_rol}
                     onChange={handleChange}
                     required
                 >
-
                     <option value="">
                         Seleccione tipo de usuario
+                    </option>
+
+                    <option value="1">
+                        Administrador
                     </option>
 
                     <option value="2">
@@ -295,8 +299,8 @@ export default function Registro() {
                     <option value="3">
                         Profesor
                     </option>
-
                 </select>
+
 
                 {Number(form.id_rol) === 2 && (
 
