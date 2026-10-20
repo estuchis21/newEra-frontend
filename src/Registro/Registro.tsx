@@ -69,24 +69,20 @@ export default function Registro() {
                 "FORMULARIO:",
                 form
             );
-
             const datos = {
-                usuario: {
-                    nombre: form.nombre,
-                    apellido: form.apellido,
-                    dni: form.dni,
-                    email: form.email,
-                    contrasena: form.contrasena,
-                    username: form.username,
-                    celular: form.celular,
-                    id_rol: rol,
-                },
-
-                es_menor:
-                    rol === 2
-                        ? form.es_menor
-                        : null,
+                nombre: form.nombre,
+                apellido: form.apellido,
+                dni: form.dni,
+                email: form.email,
+                contrasena: form.contrasena,
+                username: form.username,
+                celular: form.celular,
+                id_rol: rol,
+                es_menor: rol === 2
+                    ? form.es_menor
+                    : null,
             };
+
 
             console.log(
                 "DATOS ENVIADOS AL BACKEND:",
@@ -95,7 +91,7 @@ export default function Registro() {
 
             console.log(
                 "ID_ROL ENVIADO:",
-                datos.usuario.id_rol
+                datos.id_rol
             );
 
             const usuarioRegistrado =

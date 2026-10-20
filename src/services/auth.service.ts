@@ -68,18 +68,14 @@ export interface RegistroResponse {
 }
 
 export interface RegistroDto {
-
-    usuario: {
-        nombre: string;
-        apellido: string;
-        dni: string;
-        email: string;
-        contrasena: string;
-        username: string;
-        celular: string;
-        id_rol: number;
-    };
-
+    nombre: string;
+    apellido: string;
+    dni: string;
+    email: string;
+    contrasena: string;
+    username: string;
+    celular: string;
+    id_rol: number;
     es_menor: boolean | null;
 }
 
