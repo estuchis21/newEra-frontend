@@ -70,32 +70,27 @@ export default function Registro() {
                 form
             );
             const datos = {
-                nombre: form.nombre,
-                apellido: form.apellido,
-                dni: form.dni,
-                email: form.email,
-                contrasena: form.contrasena,
-                username: form.username,
-                celular: form.celular,
-                id_rol: rol,
-                es_menor: rol === 2
+                usuario: {
+                    nombre: form.nombre,
+                    apellido: form.apellido,
+                    dni: form.dni,
+                    email: form.email,
+                    contrasena: form.contrasena,
+                    username: form.username,
+                    celular: form.celular,
+                    id_rol: Number(form.id_rol),
+                },
+                es_menor: Number(form.id_rol) === 2
                     ? form.es_menor
                     : null,
             };
 
-
             console.log(
                 "DATOS ENVIADOS AL BACKEND:",
-                datos
+                JSON.stringify(datos, null, 2)
             );
 
-            console.log(
-                "ID_ROL ENVIADO:",
-                datos.id_rol
-            );
-
-            const usuarioRegistrado =
-                await registrarAlumno(datos);
+            const usuarioRegistrado = await registrarAlumno(datos);
 
             console.log(
                 "RESPUESTA DEL BACKEND:",
