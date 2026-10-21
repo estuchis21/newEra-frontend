@@ -173,7 +173,7 @@ export default function Registro() {
 
             } else {
 
-                navigate("/");
+                navigate("/administracion");
 
             }
 
