@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -23,6 +24,15 @@ import {
   crearPago,
   type Cuota,
 } from "../services/cuotas-pagos.service";
+
+import { obtenerBoletinesAlumno } from "../services/botelines.service";
+
+import {
+  obtenerPersonasAutorizadas,
+  obtenerHistorialRetiros,
+  type PersonaAutorizada,
+  type RetiroMenor,
+} from "../services/retiro-menores.service";
 
 import "./AlumnoDashboard.css";
 
@@ -51,6 +61,23 @@ type ErrorBackend = {
   message?: unknown;
 };
 
+type BoletinAlumno = {
+  id_boletin: number;
+  id_alumno: number;
+  id_grupo: number;
+  id_profesor: number;
+  id_periodo: number;
+  periodo?: string;
+  anio: number;
+  fecha_evaluacion: string;
+  observaciones: string | null;
+  disciplina?: string;
+  grupo?: string;
+  profesor?: string;
+  nombre_profesor?: string;
+  apellido_profesor?: string;
+};
+
 // =====================================================
 // FUNCIONES AUXILIARES
 // =====================================================
@@ -59,9 +86,7 @@ function obtenerUsuarioGuardado(): UsuarioGuardado | null {
   try {
     const usuarioGuardado = localStorage.getItem("usuario");
 
-    if (!usuarioGuardado) {
-      return null;
-    }
+    if (!usuarioGuardado) return null;
 
     const usuario: unknown = JSON.parse(usuarioGuardado);
 
@@ -80,17 +105,11 @@ function obtenerUsuarioGuardado(): UsuarioGuardado | null {
   }
 }
 
-/**
- * Extrae los mensajes de error que puede devolver NestJS.
- * Admite message como string, array u objeto, y contempla
- * errores de validación y errores de red.
- */
 function obtenerMensajeError(
   error: unknown,
   mensajePredeterminado: string
 ): string {
   const errorBackend = error as ErrorBackend | null;
-
   const datos = errorBackend?.response?.data;
 
   const formatearMensaje = (mensaje: unknown): string | null => {
@@ -129,48 +148,29 @@ function obtenerMensajeError(
     return null;
   };
 
-  // Priorizar el mensaje de validación del backend.
   const mensajeBackend = formatearMensaje(datos?.message);
-
-  if (mensajeBackend) {
-    return mensajeBackend;
-  }
+  if (mensajeBackend) return mensajeBackend;
 
   const erroresBackend = formatearMensaje(datos?.errors);
-
-  if (erroresBackend) {
-    return erroresBackend;
-  }
+  if (erroresBackend) return erroresBackend;
 
   const errorBackendMensaje = formatearMensaje(datos?.error);
-
-  if (errorBackendMensaje) {
-    return errorBackendMensaje;
-  }
+  if (errorBackendMensaje) return errorBackendMensaje;
 
   const mensajeCliente = formatearMensaje(errorBackend?.message);
-
-  if (mensajeCliente) {
-    return mensajeCliente;
-  }
+  if (mensajeCliente) return mensajeCliente;
 
   return mensajePredeterminado;
 }
 
 function obtenerIdValido(valor: unknown): number | null {
-  if (
-    valor === null ||
-    valor === undefined ||
-    valor === ""
-  ) {
+  if (valor === null || valor === undefined || valor === "") {
     return null;
   }
 
   const id = Number(valor);
 
-  return Number.isInteger(id) && id > 0
-    ? id
-    : null;
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 function obtenerMensajeCuota(cuota: Cuota): string {
@@ -179,11 +179,7 @@ function obtenerMensajeCuota(cuota: Cuota): string {
   const mes = Number(cuotaData.mes);
   const anio = Number(cuotaData.anio);
 
-  if (
-    Number.isInteger(mes) &&
-    mes >= 1 &&
-    mes <= 12
-  ) {
+  if (Number.isInteger(mes) && mes >= 1 && mes <= 12) {
     const fecha = new Date(
       anio || new Date().getFullYear(),
       mes - 1,
@@ -197,8 +193,7 @@ function obtenerMensajeCuota(cuota: Cuota): string {
   }
 
   const fechaReferencia =
-    cuotaData.fecha_vencimiento ??
-    cuotaData.fecha_pago;
+    cuotaData.fecha_vencimiento ?? cuotaData.fecha_pago;
 
   if (fechaReferencia) {
     const fecha = new Date(String(fechaReferencia));
@@ -212,6 +207,27 @@ function obtenerMensajeCuota(cuota: Cuota): string {
   }
 
   return "Cuota mensual";
+}
+
+function formatearFecha(fecha?: string | null): string {
+  if (!fecha) return "-";
+
+  const fechaNormalizada = String(fecha).slice(0, 10);
+  const date = new Date(`${fechaNormalizada}T12:00:00`);
+
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleDateString("es-AR");
+}
+
+function formatearFechaHora(fecha?: string | null): string {
+  if (!fecha) return "-";
+
+  const date = new Date(fecha);
+
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleString("es-AR");
 }
 
 // =====================================================
@@ -239,11 +255,8 @@ export default function AlumnoDashboard() {
   const [idAlumno, setIdAlumno] =
     useState<number | null>(null);
 
-  const [loadingAlumno, setLoadingAlumno] =
-    useState(true);
-
-  const [errorAlumno, setErrorAlumno] =
-    useState("");
+  const [loadingAlumno, setLoadingAlumno] = useState(true);
+  const [errorAlumno, setErrorAlumno] = useState("");
 
   // =====================================================
   // SECCIÓN
@@ -256,30 +269,25 @@ export default function AlumnoDashboard() {
   // =====================================================
 
   const [grupos, setGrupos] = useState<Grupo[]>([]);
-
   const [gruposDisponibles, setGruposDisponibles] =
     useState<Grupo[]>([]);
 
-  const [loadingGrupos, setLoadingGrupos] =
-    useState(false);
-
+  const [loadingGrupos, setLoadingGrupos] = useState(false);
   const [loadingGruposDisponibles, setLoadingGruposDisponibles] =
     useState(false);
 
   const [errorGrupos, setErrorGrupos] = useState("");
-
   const [errorGruposDisponibles, setErrorGruposDisponibles] =
     useState("");
 
   // =====================================================
-  // INSCRIPCIÓN
+  // INSCRIPCIONES
   // =====================================================
 
   const [inscribiendo, setInscribiendo] =
     useState<number | null>(null);
 
-  const [mensajeInscripcion, setMensajeInscripcion] =
-    useState("");
+  const [mensajeInscripcion, setMensajeInscripcion] = useState("");
 
   const [eliminandoInscripcion, setEliminandoInscripcion] =
     useState<number | null>(null);
@@ -288,39 +296,60 @@ export default function AlumnoDashboard() {
   // ASISTENCIAS
   // =====================================================
 
-  const [asistencias, setAsistencias] =
-    useState<Asistencia[]>([]);
+  const [asistencias, setAsistencias] = useState<Asistencia[]>([]);
+  const [loadingAsistencias, setLoadingAsistencias] = useState(false);
+  const [errorAsistencias, setErrorAsistencias] = useState("");
 
-  const [loadingAsistencias, setLoadingAsistencias] =
+  // =====================================================
+  // BOLETINES
+  // =====================================================
+
+  const [boletines, setBoletines] = useState<BoletinAlumno[]>([]);
+  const [loadingBoletines, setLoadingBoletines] = useState(false);
+  const [errorBoletines, setErrorBoletines] = useState("");
+
+  // =====================================================
+  // PERSONAS AUTORIZADAS
+  // =====================================================
+
+  const [personasAutorizadas, setPersonasAutorizadas] =
+    useState<PersonaAutorizada[]>([]);
+
+  const [loadingPersonasAutorizadas, setLoadingPersonasAutorizadas] =
     useState(false);
 
-  const [errorAsistencias, setErrorAsistencias] =
+  const [errorPersonasAutorizadas, setErrorPersonasAutorizadas] =
     useState("");
+
+  // =====================================================
+  // HISTORIAL DE RETIROS
+  // =====================================================
+
+  const [historialRetiros, setHistorialRetiros] =
+    useState<RetiroMenor[]>([]);
+
+  const [loadingRetiros, setLoadingRetiros] = useState(false);
+  const [errorRetiros, setErrorRetiros] = useState("");
 
   // =====================================================
   // CUOTAS
   // =====================================================
 
   const [cuotas, setCuotas] = useState<Cuota[]>([]);
-
-  const [loadingCuotas, setLoadingCuotas] =
-    useState(false);
-
+  const [loadingCuotas, setLoadingCuotas] = useState(false);
   const [errorCuotas, setErrorCuotas] = useState("");
 
   const [pagandoCuota, setPagandoCuota] =
     useState<number | null>(null);
 
   // =====================================================
-  // CONTROL DE ACCESO POR CUOTA
+  // CONTROL DE ACCESO
   // =====================================================
 
   const [accesoPermitido, setAccesoPermitido] =
     useState<boolean | null>(null);
 
-  const [loadingAcceso, setLoadingAcceso] =
-    useState(false);
-
+  const [loadingAcceso, setLoadingAcceso] = useState(false);
   const [errorAcceso, setErrorAcceso] = useState("");
 
   // =====================================================
@@ -358,8 +387,6 @@ export default function AlumnoDashboard() {
 
         console.log("RESPUESTA DE NESTJS:", respuesta);
 
-        // El servicio puede devolver un número o un ID representado
-        // como string, según cómo esté implementado el backend.
         const idObtenido = obtenerIdValido(respuesta);
 
         if (!idObtenido) {
@@ -368,8 +395,6 @@ export default function AlumnoDashboard() {
           );
           return;
         }
-
-        console.log("ID ALUMNO OBTENIDO:", idObtenido);
 
         setIdAlumno(idObtenido);
         setAlumno(usuario);
@@ -391,7 +416,7 @@ export default function AlumnoDashboard() {
   }, [usuario]);
 
   // =====================================================
-  // VERIFICAR ACCESO SEGÚN EL ESTADO DE LA CUOTA
+  // VERIFICAR ACCESO
   // =====================================================
 
   const cargarEstadoAcceso = async () => {
@@ -406,16 +431,13 @@ export default function AlumnoDashboard() {
       setAccesoPermitido(resultado.puedeAcceder);
 
       if (!resultado.puedeAcceder) {
-        // El alumno conserva acceso a la sección de cuotas
-        // para consultar su deuda y realizar el pago.
         setSeccion("cuotas");
       }
     } catch (error: unknown) {
-      console.error("Error verificando acceso del alumno:", error);
+      console.error("Error verificando acceso:", error);
 
-      // Ante un error de verificación, no habilitamos por defecto
-      // las funcionalidades académicas.
       setAccesoPermitido(false);
+
       setErrorAcceso(
         obtenerMensajeError(
           error,
@@ -428,7 +450,7 @@ export default function AlumnoDashboard() {
   };
 
   // =====================================================
-  // CARGAR GRUPOS DEL ALUMNO
+  // CARGAR GRUPOS
   // =====================================================
 
   const cargarGrupos = async () => {
@@ -440,17 +462,12 @@ export default function AlumnoDashboard() {
 
       const datos = await obtenerGruposAlumno(idAlumno);
 
-      console.log("GRUPOS DEL ALUMNO:", datos);
-
       setGrupos(Array.isArray(datos) ? datos : []);
     } catch (error: unknown) {
       console.error("Error obteniendo grupos:", error);
 
       setErrorGrupos(
-        obtenerMensajeError(
-          error,
-          "No se pudieron cargar tus grupos."
-        )
+        obtenerMensajeError(error, "No se pudieron cargar tus grupos.")
       );
 
       setGrupos([]);
@@ -469,10 +486,7 @@ export default function AlumnoDashboard() {
       setErrorGruposDisponibles("");
 
       const datos = await obtenerGruposDisponibles();
-
       const lista = Array.isArray(datos) ? datos : [];
-
-      console.log("GRUPOS DISPONIBLES:", lista);
 
       setGruposDisponibles(
         lista.filter((grupo) => grupo.activo !== false)
@@ -506,21 +520,7 @@ export default function AlumnoDashboard() {
 
       const datos = await obtenerAsistencias(idAlumno);
 
-      console.log(
-        "ASISTENCIAS RECIBIDAS POR DASHBOARD:",
-        datos
-      );
-
-      if (Array.isArray(datos)) {
-        setAsistencias(datos);
-      } else {
-        console.error(
-          "Las asistencias no son un array:",
-          datos
-        );
-
-        setAsistencias([]);
-      }
+      setAsistencias(Array.isArray(datos) ? datos : []);
     } catch (error: unknown) {
       console.error("Error obteniendo asistencias:", error);
 
@@ -538,7 +538,107 @@ export default function AlumnoDashboard() {
   };
 
   // =====================================================
-  // CARGAR CUOTAS DEL ALUMNO
+  // CARGAR BOLETINES
+  // =====================================================
+
+  const cargarBoletines = async () => {
+    if (!idAlumno) return;
+
+    try {
+      setLoadingBoletines(true);
+      setErrorBoletines("");
+
+      const datos = await obtenerBoletinesAlumno(idAlumno);
+
+      setBoletines(
+        Array.isArray(datos) ? (datos as BoletinAlumno[]) : []
+      );
+    } catch (error: unknown) {
+      console.error("Error obteniendo boletines:", error);
+
+      setErrorBoletines(
+        obtenerMensajeError(
+          error,
+          "No se pudieron cargar tus boletines."
+        )
+      );
+
+      setBoletines([]);
+    } finally {
+      setLoadingBoletines(false);
+    }
+  };
+
+  // =====================================================
+  // CARGAR PERSONAS AUTORIZADAS
+  // =====================================================
+
+  const cargarPersonasAutorizadas = async () => {
+    if (!idAlumno) return;
+
+    try {
+      setLoadingPersonasAutorizadas(true);
+      setErrorPersonasAutorizadas("");
+
+      const datos = await obtenerPersonasAutorizadas(idAlumno);
+
+      setPersonasAutorizadas(
+        Array.isArray(datos)
+          ? datos.filter((persona) => persona.activo !== false)
+          : []
+      );
+    } catch (error: unknown) {
+      console.error("Error obteniendo personas autorizadas:", error);
+
+      setErrorPersonasAutorizadas(
+        obtenerMensajeError(
+          error,
+          "No se pudieron cargar las personas autorizadas."
+        )
+      );
+
+      setPersonasAutorizadas([]);
+    } finally {
+      setLoadingPersonasAutorizadas(false);
+    }
+  };
+
+  // =====================================================
+  // CARGAR HISTORIAL DE RETIROS
+  // =====================================================
+
+  const cargarHistorialRetiros = async () => {
+    if (!idAlumno) return;
+
+    try {
+      setLoadingRetiros(true);
+      setErrorRetiros("");
+
+      const datos = await obtenerHistorialRetiros({
+        id_alumno: idAlumno,
+      });
+
+      setHistorialRetiros(
+        Array.isArray(datos) ? datos : []
+      );
+    } catch (error: unknown) {
+      console.error("Error obteniendo historial de retiros:", error);
+
+      setErrorRetiros(
+        obtenerMensajeError(
+          error,
+          "No se pudo cargar el historial de retiros."
+        )
+      );
+
+      setHistorialRetiros([]);
+    } finally {
+      setLoadingRetiros(false);
+    }
+  };
+
+  // =====================================================
+  // CARGAR CUOTAS
   // =====================================================
 
   const cargarCuotas = async () => {
@@ -550,17 +650,12 @@ export default function AlumnoDashboard() {
 
       const datos = await obtenerCuotasAlumno(idAlumno);
 
-      console.log("CUOTAS DEL ALUMNO:", datos);
-
       setCuotas(Array.isArray(datos) ? datos : []);
     } catch (error: unknown) {
       console.error("Error obteniendo cuotas:", error);
 
       setErrorCuotas(
-        obtenerMensajeError(
-          error,
-          "No se pudieron cargar las cuotas."
-        )
+        obtenerMensajeError(error, "No se pudieron cargar las cuotas.")
       );
 
       setCuotas([]);
@@ -589,8 +684,6 @@ export default function AlumnoDashboard() {
 
       const resultado = await crearPago(idCuota);
 
-      console.log("RESPUESTA CREAR PAGO:", resultado);
-
       const url =
         resultado?.init_point ??
         resultado?.sandbox_init_point ??
@@ -604,7 +697,7 @@ export default function AlumnoDashboard() {
       await Swal.fire({
         icon: "success",
         title: "Pago creado",
-        text: "Se creó correctamente el pago, pero el backend no devolvió una URL de pago.",
+        text: "Se creó el pago, pero el backend no devolvió una URL de pago.",
         confirmButtonText: "Aceptar",
       });
 
@@ -615,10 +708,7 @@ export default function AlumnoDashboard() {
       await Swal.fire({
         icon: "error",
         title: "No se pudo iniciar el pago",
-        text: obtenerMensajeError(
-          error,
-          "No se pudo iniciar el pago."
-        ),
+        text: obtenerMensajeError(error, "No se pudo iniciar el pago."),
         confirmButtonText: "Aceptar",
       });
     } finally {
@@ -627,7 +717,7 @@ export default function AlumnoDashboard() {
   };
 
   // =====================================================
-  // CUANDO TENEMOS EL ID DEL ALUMNO
+  // CARGA INICIAL
   // =====================================================
 
   useEffect(() => {
@@ -636,13 +726,11 @@ export default function AlumnoDashboard() {
     void cargarEstadoAcceso();
     void cargarCuotas();
 
-    // Las funcionalidades académicas solo se consultan
-    // cuando el backend confirma que el alumno tiene acceso.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idAlumno]);
 
   // =====================================================
-  // CARGAR DATOS ACADÉMICOS SOLO SI TIENE ACCESO
+  // CARGAR INFORMACIÓN ACADÉMICA
   // =====================================================
 
   useEffect(() => {
@@ -655,13 +743,27 @@ export default function AlumnoDashboard() {
   }, [idAlumno, accesoPermitido]);
 
   // =====================================================
-  // CUANDO ENTRA EN INSCRIBIRME
+  // CARGAR BOLETINES Y RETIROS
   // =====================================================
 
   useEffect(() => {
-    if (seccion === "inscribirme") {
-      void cargarGruposDisponibles();
-    }
+    if (!idAlumno) return;
+
+    void cargarBoletines();
+    void cargarPersonasAutorizadas();
+    void cargarHistorialRetiros();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idAlumno]);
+
+  // =====================================================
+  // CARGAR GRUPOS DISPONIBLES
+  // =====================================================
+
+  useEffect(() => {
+    if (seccion !== "inscribirme") return;
+
+    void cargarGruposDisponibles();
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seccion]);
@@ -676,9 +778,7 @@ export default function AlumnoDashboard() {
         icon: "error",
         title: "Error",
         text: "No se pudo identificar al alumno.",
-        confirmButtonText: "Aceptar",
       });
-
       return;
     }
 
@@ -687,9 +787,7 @@ export default function AlumnoDashboard() {
         icon: "error",
         title: "Grupo inválido",
         text: "No se pudo identificar el grupo seleccionado.",
-        confirmButtonText: "Aceptar",
       });
-
       return;
     }
 
@@ -707,7 +805,6 @@ export default function AlumnoDashboard() {
         icon: "success",
         title: "¡Inscripción exitosa!",
         text: "Te inscribiste correctamente al grupo.",
-        confirmButtonText: "Aceptar",
       });
 
       await cargarGrupos();
@@ -726,7 +823,6 @@ export default function AlumnoDashboard() {
         icon: "error",
         title: "No se pudo inscribir",
         text: mensaje,
-        confirmButtonText: "Aceptar",
       });
     } finally {
       setInscribiendo(null);
@@ -744,10 +840,8 @@ export default function AlumnoDashboard() {
       await Swal.fire({
         icon: "error",
         title: "Inscripción inválida",
-        text: "No se pudo identificar la inscripción que querés cancelar.",
-        confirmButtonText: "Aceptar",
+        text: "No se pudo identificar la inscripción.",
       });
-
       return;
     }
 
@@ -762,9 +856,7 @@ export default function AlumnoDashboard() {
         confirmButtonColor: "#d33",
       });
 
-      if (!resultado.isConfirmed) {
-        return;
-      }
+      if (!resultado.isConfirmed) return;
 
       setEliminandoInscripcion(idInscripcion);
 
@@ -774,7 +866,6 @@ export default function AlumnoDashboard() {
         icon: "success",
         title: "Inscripción cancelada",
         text: "La inscripción fue eliminada y se devolvió el crédito.",
-        confirmButtonText: "Aceptar",
       });
 
       await cargarGrupos();
@@ -789,7 +880,6 @@ export default function AlumnoDashboard() {
           error,
           "No se pudo eliminar la inscripción."
         ),
-        confirmButtonText: "Aceptar",
       });
     } finally {
       setEliminandoInscripcion(null);
@@ -806,21 +896,17 @@ export default function AlumnoDashboard() {
   };
 
   // =====================================================
-  // LOADING ALUMNO
+  // ESTADOS DE CARGA Y ERROR
   // =====================================================
 
   if (loadingAlumno) {
     return (
       <div className="dashboard-loading">
-        <div className="loading-spinner"></div>
+        <div className="loading-spinner" />
         <p>Cargando información del alumno...</p>
       </div>
     );
   }
-
-  // =====================================================
-  // ERROR ALUMNO
-  // =====================================================
 
   if (errorAlumno) {
     return (
@@ -835,39 +921,35 @@ export default function AlumnoDashboard() {
     );
   }
 
-  // =====================================================
-  // CARGA DEL CONTROL DE ACCESO
-  // =====================================================
-
   if (loadingAcceso || accesoPermitido === null) {
     return (
       <div className="dashboard-loading">
-        <div className="loading-spinner"></div>
+        <div className="loading-spinner" />
         <p>Verificando el estado de tu cuota...</p>
       </div>
     );
   }
 
   // =====================================================
-  // NOMBRE
+  // DATOS DEL ALUMNO
   // =====================================================
 
-  const nombreAlumno =
-    alumno?.nombre ??
-    usuario?.nombre ??
-    "Alumno";
-
-  const apellidoAlumno =
-    alumno?.apellido ??
-    usuario?.apellido ??
-    "";
+  const nombreAlumno = alumno?.nombre ?? usuario?.nombre ?? "Alumno";
+  const apellidoAlumno = alumno?.apellido ?? usuario?.apellido ?? "";
 
   const nombreCompleto =
     `${nombreAlumno} ${apellidoAlumno}`.trim();
 
-  // =====================================================
-// FILTRAR GRUPOS EN LOS QUE YA ESTÁ INSCRIPTO
-// =====================================================
+  const gruposInscritos = new Set(
+    grupos.map((grupo) => Number(grupo.id_grupo))
+  );
+
+  const gruposDisponiblesFiltrados =
+    gruposDisponibles.filter(
+      (grupo) =>
+        grupo.activo !== false &&
+        !gruposInscritos.has(Number(grupo.id_grupo))
+    );
 
   // =====================================================
   // RENDER
@@ -875,7 +957,9 @@ export default function AlumnoDashboard() {
 
   return (
     <div className="alumno-dashboard">
-      {/* SIDEBAR */}
+      {/* =================================================
+          SIDEBAR
+      ================================================= */}
 
       <aside className="sidebar">
         <div className="sidebar-logo">
@@ -899,6 +983,8 @@ export default function AlumnoDashboard() {
         </div>
 
         <nav className="sidebar-nav">
+          {/* FUNCIONES ACADÉMICAS CON ACCESO HABILITADO */}
+
           {accesoPermitido && (
             <>
               <button
@@ -931,6 +1017,33 @@ export default function AlumnoDashboard() {
             </>
           )}
 
+          {/* BOLETINES Y RETIROS */}
+
+          <button
+            className={seccion === "boletines" ? "active" : ""}
+            onClick={() => setSeccion("boletines")}
+          >
+            📑 <span>Mis boletines</span>
+          </button>
+
+          <button
+            className={seccion === "retiros" ? "active" : ""}
+            onClick={() => setSeccion("retiros")}
+          >
+            👨‍👩‍👧 <span>Personas autorizadas</span>
+          </button>
+
+          <button
+            className={
+              seccion === "historial-retiros" ? "active" : ""
+            }
+            onClick={() => setSeccion("historial-retiros")}
+          >
+            🕒 <span>Historial de retiros</span>
+          </button>
+
+          {/* CUOTAS Y PERFIL */}
+
           <button
             className={seccion === "cuotas" ? "active" : ""}
             onClick={() => setSeccion("cuotas")}
@@ -946,15 +1059,14 @@ export default function AlumnoDashboard() {
           </button>
         </nav>
 
-        <button
-          className="logout-button"
-          onClick={cerrarSesion}
-        >
+        <button className="logout-button" onClick={cerrarSesion}>
           🚪 <span>Cerrar sesión</span>
         </button>
       </aside>
 
-      {/* CONTENIDO */}
+      {/* =================================================
+          CONTENIDO PRINCIPAL
+      ================================================= */}
 
       <main className="dashboard-main">
         {/* HEADER */}
@@ -966,6 +1078,10 @@ export default function AlumnoDashboard() {
               {seccion === "grupos" && "Mis grupos"}
               {seccion === "asistencia" && "Mi asistencia"}
               {seccion === "inscribirme" && "Inscribirme"}
+              {seccion === "boletines" && "Mis boletines"}
+              {seccion === "retiros" && "Personas autorizadas"}
+              {seccion === "historial-retiros" &&
+                "Historial de retiros"}
               {seccion === "cuotas" && "Mis cuotas"}
               {seccion === "perfil" && "Mi perfil"}
             </h1>
@@ -984,13 +1100,17 @@ export default function AlumnoDashboard() {
           </div>
         </header>
 
+        {/* RESTRICCIÓN DE ACCESO */}
+
         {!accesoPermitido && (
           <div className="dashboard-warning" role="alert">
             <strong>Acceso académico restringido.</strong>
+
             <p>
               {errorAcceso ||
                 "Tenés una cuota pendiente. Podés consultar tus cuotas y realizar el pago desde esta sección."}
             </p>
+
             <div className="restriction-actions">
               <button
                 type="button"
@@ -999,19 +1119,24 @@ export default function AlumnoDashboard() {
               >
                 Ir a mis cuotas
               </button>
+
               <button
                 type="button"
                 className="secondary-button"
                 onClick={() => void cargarEstadoAcceso()}
                 disabled={loadingAcceso}
               >
-                {loadingAcceso ? "Verificando..." : "Actualizar estado de pago"}
+                {loadingAcceso
+                  ? "Verificando..."
+                  : "Actualizar estado de pago"}
               </button>
             </div>
           </div>
         )}
 
-        {/* INICIO */}
+        {/* =================================================
+            INICIO
+        ================================================= */}
 
         {accesoPermitido && seccion === "inicio" && (
           <section className="dashboard-section">
@@ -1049,6 +1174,14 @@ export default function AlumnoDashboard() {
                   <strong>{cuotas.length}</strong>
                 </div>
               </div>
+
+              <div className="stat-card">
+                <div className="stat-icon">📑</div>
+                <div>
+                  <span>Boletines</span>
+                  <strong>{boletines.length}</strong>
+                </div>
+              </div>
             </div>
 
             <div className="dashboard-card">
@@ -1081,7 +1214,9 @@ export default function AlumnoDashboard() {
           </section>
         )}
 
-        {/* MIS GRUPOS */}
+        {/* =================================================
+            MIS GRUPOS
+        ================================================= */}
 
         {accesoPermitido && seccion === "grupos" && (
           <section className="dashboard-section">
@@ -1099,7 +1234,7 @@ export default function AlumnoDashboard() {
                 </div>
               ) : errorGrupos ? (
                 <div className="dashboard-warning" role="alert">
-                  ⚠️ {errorGrupos}
+                  {errorGrupos}
                 </div>
               ) : grupos.length === 0 ? (
                 <div className="empty-state">
@@ -1178,7 +1313,9 @@ export default function AlumnoDashboard() {
           </section>
         )}
 
-        {/* ASISTENCIA */}
+        {/* =================================================
+            ASISTENCIAS
+        ================================================= */}
 
         {accesoPermitido && seccion === "asistencia" && (
           <section className="dashboard-section">
@@ -1196,7 +1333,7 @@ export default function AlumnoDashboard() {
                 </div>
               ) : errorAsistencias ? (
                 <div className="dashboard-warning" role="alert">
-                  ⚠️ {errorAsistencias}
+                  {errorAsistencias}
                 </div>
               ) : asistencias.length === 0 ? (
                 <div className="empty-state">
@@ -1223,9 +1360,7 @@ export default function AlumnoDashboard() {
                         <tr key={asistencia.id_asistencia}>
                           <td>
                             {asistencia.fecha
-                              ? new Date(
-                                  asistencia.fecha
-                                ).toLocaleDateString("es-AR")
+                              ? formatearFecha(asistencia.fecha)
                               : "-"}
                           </td>
 
@@ -1254,7 +1389,9 @@ export default function AlumnoDashboard() {
           </section>
         )}
 
-        {/* INSCRIBIRME */}
+        {/* =================================================
+            INSCRIBIRME
+        ================================================= */}
 
         {accesoPermitido && seccion === "inscribirme" && (
           <section className="dashboard-section">
@@ -1278,105 +1415,368 @@ export default function AlumnoDashboard() {
                 </div>
               </div>
 
-              {/*
-                Obtenemos los identificadores de los grupos
-                en los que el alumno ya está inscripto.
-              */}
-              {(() => {
-                const idsGruposInscritos = new Set(
-                  grupos.map((grupo) => Number(grupo.id_grupo))
-                );
+              {loadingGruposDisponibles ? (
+                <div className="empty-state">
+                  <p>Cargando grupos disponibles...</p>
+                </div>
+              ) : errorGruposDisponibles ? (
+                <div className="dashboard-warning" role="alert">
+                  {errorGruposDisponibles}
+                </div>
+              ) : gruposDisponiblesFiltrados.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-icon">📚</div>
+                  <h3>No hay grupos disponibles</h3>
+                  <p>
+                    En este momento no hay grupos disponibles
+                    para inscribirse.
+                  </p>
+                </div>
+              ) : (
+                <div className="groups-grid">
+                  {gruposDisponiblesFiltrados.map((grupo) => (
+                    <div
+                      className="group-card"
+                      key={grupo.id_grupo}
+                    >
+                      <div className="group-card-header">
+                        <span>{grupo.disciplina}</span>
+                        <span>{grupo.nivel}</span>
+                      </div>
 
-                const gruposDisponiblesFiltrados =
-                  gruposDisponibles.filter(
-                    (grupo) =>
-                      grupo.activo !== false &&
-                      !idsGruposInscritos.has(
-                        Number(grupo.id_grupo)
-                      )
-                  );
+                      <h3>{grupo.disciplina}</h3>
+                      <p>Nivel: {grupo.nivel}</p>
 
-                return loadingGruposDisponibles ? (
-                  <div className="empty-state">
-                    <p>Cargando grupos disponibles...</p>
-                  </div>
-                ) : errorGruposDisponibles ? (
-                  <div
-                    className="dashboard-warning"
-                    role="alert"
-                  >
-                    ⚠️ {errorGruposDisponibles}
-                  </div>
-                ) : gruposDisponiblesFiltrados.length === 0 ? (
-                  <div className="empty-state">
-                    <div className="empty-icon">📚</div>
-                    <h3>No hay grupos disponibles</h3>
-                    <p>
-                      En este momento no hay grupos disponibles
-                      para inscribirse.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="groups-grid">
-                    {gruposDisponiblesFiltrados.map((grupo) => (
-                      <div
-                        className="group-card"
-                        key={grupo.id_grupo}
-                      >
-                        <div className="group-card-header">
-                          <span>{grupo.disciplina}</span>
-                          <span>{grupo.nivel}</span>
-                        </div>
+                      {grupo.profesor && (
+                        <p>👨‍🏫 Profesor: {grupo.profesor}</p>
+                      )}
 
-                        <h3>{grupo.disciplina}</h3>
-                        <p>Nivel: {grupo.nivel}</p>
-
-                        {grupo.profesor && (
-                          <p>
-                            👨‍🏫 Profesor: {grupo.profesor}
-                          </p>
+                      {grupo.horarios &&
+                        grupo.horarios.length > 0 && (
+                          <div className="group-schedule">
+                            {grupo.horarios.map((horario) => (
+                              <div key={horario.id_horario}>
+                                📅 {horario.dia_semana}
+                                <br />
+                                🕐 {horario.hora_inicio}
+                                {" - "}
+                                {horario.hora_fin}
+                              </div>
+                            ))}
+                          </div>
                         )}
 
-                        {grupo.horarios &&
-                          grupo.horarios.length > 0 && (
-                            <div className="group-schedule">
-                              {grupo.horarios.map((horario) => (
-                                <div
-                                  key={horario.id_horario}
-                                >
-                                  📅 {horario.dia_semana}
-                                  <br />
-                                  🕐 {horario.hora_inicio}
-                                  {" - "}
-                                  {horario.hora_fin}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                        <button
-                          type="button"
-                          className="primary-button"
-                          disabled={
-                            inscribiendo === grupo.id_grupo
-                          }
-                          onClick={() =>
-                            handleInscribirse(grupo.id_grupo)
-                          }
-                        >
-                          {inscribiendo === grupo.id_grupo
-                            ? "Inscribiendo..."
-                            : "Inscribirme"}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
+                      <button
+                        type="button"
+                        className="primary-button"
+                        disabled={
+                          inscribiendo === grupo.id_grupo
+                        }
+                        onClick={() =>
+                          handleInscribirse(grupo.id_grupo)
+                        }
+                      >
+                        {inscribiendo === grupo.id_grupo
+                          ? "Inscribiendo..."
+                          : "Inscribirme"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
         )}
-        {/* CUOTAS */}
+
+        {/* =================================================
+            BOLETINES
+        ================================================= */}
+
+        {seccion === "boletines" && (
+          <section className="dashboard-section">
+            <div className="dashboard-card">
+              <div className="card-header">
+                <div>
+                  <h3>Mis boletines</h3>
+                  <p>
+                    Consultá tus evaluaciones y observaciones de los
+                    profesores.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => void cargarBoletines()}
+                  disabled={loadingBoletines}
+                >
+                  {loadingBoletines
+                    ? "Actualizando..."
+                    : "Actualizar"}
+                </button>
+              </div>
+
+              {loadingBoletines ? (
+                <div className="empty-state">
+                  <p>Cargando boletines...</p>
+                </div>
+              ) : errorBoletines ? (
+                <div className="dashboard-warning" role="alert">
+                  {errorBoletines}
+                </div>
+              ) : boletines.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-icon">📑</div>
+                  <h3>Todavía no tenés boletines</h3>
+                  <p>
+                    Cuando tus profesores registren tus evaluaciones,
+                    vas a poder consultarlas desde acá.
+                  </p>
+                </div>
+              ) : (
+                <div className="groups-grid">
+                  {boletines.map((boletin) => (
+                    <article
+                      className="group-card"
+                      key={boletin.id_boletin}
+                    >
+                      <div className="group-card-header">
+                        <span>
+                          {boletin.periodo ?? "Período de evaluación"}
+                        </span>
+                        <span>{boletin.anio}</span>
+                      </div>
+
+                      <h3>
+                        {boletin.disciplina ??
+                          boletin.grupo ??
+                          "Evaluación"}
+                      </h3>
+
+                      <p>
+                        <strong>Profesor:</strong>{" "}
+                        {boletin.nombre_profesor
+                          ? `${boletin.nombre_profesor} ${
+                              boletin.apellido_profesor ?? ""
+                            }`
+                          : boletin.profesor ?? "No informado"}
+                      </p>
+
+                      <p>
+                        <strong>Fecha de evaluación:</strong>{" "}
+                        {formatearFecha(boletin.fecha_evaluacion)}
+                      </p>
+
+                      <div className="student-info-grid">
+                        <div>
+                          <span>Período</span>
+                          <strong>
+                            {boletin.periodo ?? "No informado"}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>Año</span>
+                          <strong>{boletin.anio}</strong>
+                        </div>
+                      </div>
+
+                      <div className="dashboard-card">
+                        <strong>Observaciones del profesor</strong>
+                        <p>
+                          {boletin.observaciones?.trim() ||
+                            "No se registraron observaciones."}
+                        </p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* =================================================
+            PERSONAS AUTORIZADAS
+        ================================================= */}
+
+        {seccion === "retiros" && (
+          <section className="dashboard-section">
+            <div className="dashboard-card">
+              <div className="card-header">
+                <div>
+                  <h3>Personas autorizadas</h3>
+                  <p>
+                    Adultos registrados que pueden retirarte de la
+                    academia.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => void cargarPersonasAutorizadas()}
+                  disabled={loadingPersonasAutorizadas}
+                >
+                  {loadingPersonasAutorizadas
+                    ? "Actualizando..."
+                    : "Actualizar"}
+                </button>
+              </div>
+
+              <div className="dashboard-warning">
+                <strong>Información importante</strong>
+                <p>
+                  La entrega se realiza únicamente después de que
+                  el profesor verifique la identidad del adulto
+                  autorizado. Si algún dato es incorrecto, comunicate
+                  con la administración de New Era.
+                </p>
+              </div>
+
+              {loadingPersonasAutorizadas ? (
+                <div className="empty-state">
+                  <p>Cargando personas autorizadas...</p>
+                </div>
+              ) : errorPersonasAutorizadas ? (
+                <div className="dashboard-warning" role="alert">
+                  {errorPersonasAutorizadas}
+                </div>
+              ) : personasAutorizadas.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-icon">👨‍👩‍👧</div>
+                  <h3>No hay personas autorizadas</h3>
+                  <p>
+                    Todavía no hay adultos registrados para tu retiro.
+                    Consultá con la administración.
+                  </p>
+                </div>
+              ) : (
+                <div className="groups-grid">
+                  {personasAutorizadas.map((persona) => (
+                    <article
+                      className="group-card"
+                      key={persona.id_autorizada}
+                    >
+                      <div className="group-card-header">
+                        <span>Persona autorizada</span>
+                        <span>Activa</span>
+                      </div>
+
+                      <h3>
+                        {persona.nombre} {persona.apellido}
+                      </h3>
+
+                      <p>
+                        <strong>DNI:</strong> {persona.dni}
+                      </p>
+
+                      <p>
+                        <strong>Parentesco:</strong>{" "}
+                        {persona.parentesco || "No especificado"}
+                      </p>
+
+                      <p>
+                        <strong>Teléfono:</strong>{" "}
+                        {persona.telefono || "No informado"}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* =================================================
+            HISTORIAL DE RETIROS
+        ================================================= */}
+
+        {seccion === "historial-retiros" && (
+          <section className="dashboard-section">
+            <div className="dashboard-card">
+              <div className="card-header">
+                <div>
+                  <h3>Historial de retiros</h3>
+                  <p>
+                    Consultá los registros de las personas que te
+                    retiraron de la academia.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => void cargarHistorialRetiros()}
+                  disabled={loadingRetiros}
+                >
+                  {loadingRetiros ? "Actualizando..." : "Actualizar"}
+                </button>
+              </div>
+
+              {loadingRetiros ? (
+                <div className="empty-state">
+                  <p>Cargando historial...</p>
+                </div>
+              ) : errorRetiros ? (
+                <div className="dashboard-warning" role="alert">
+                  {errorRetiros}
+                </div>
+              ) : historialRetiros.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-icon">🕒</div>
+                  <h3>Sin retiros registrados</h3>
+                  <p>
+                    Todavía no hay registros de retiros asociados a
+                    tu alumno.
+                  </p>
+                </div>
+              ) : (
+                <div className="attendance-table-wrapper">
+                  <table className="attendance-table">
+                    <thead>
+                      <tr>
+                        <th>Fecha y hora</th>
+                        <th>Persona que retiró</th>
+                        <th>DNI</th>
+                        <th>Parentesco</th>
+                        <th>Profesor</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {historialRetiros.map((retiro) => (
+                        <tr key={retiro.id_retiro}>
+                          <td>
+                            {formatearFechaHora(retiro.fecha_hora)}
+                          </td>
+
+                          <td>
+                            {retiro.nombre_autorizado}{" "}
+                            {retiro.apellido_autorizado}
+                          </td>
+
+                          <td>{retiro.dni_autorizado}</td>
+
+                          <td>{retiro.parentesco || "-"}</td>
+
+                          <td>
+                            {retiro.nombre_profesor}{" "}
+                            {retiro.apellido_profesor}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* =================================================
+            CUOTAS
+        ================================================= */}
 
         {seccion === "cuotas" && (
           <section className="dashboard-section">
@@ -1388,6 +1788,15 @@ export default function AlumnoDashboard() {
                     Consultá tus cuotas mensuales y realizá tus pagos.
                   </p>
                 </div>
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => void cargarCuotas()}
+                  disabled={loadingCuotas}
+                >
+                  {loadingCuotas ? "Actualizando..." : "Actualizar"}
+                </button>
               </div>
 
               {loadingCuotas ? (
@@ -1396,7 +1805,7 @@ export default function AlumnoDashboard() {
                 </div>
               ) : errorCuotas ? (
                 <div className="dashboard-warning" role="alert">
-                  ⚠️ {errorCuotas}
+                  {errorCuotas}
                 </div>
               ) : cuotas.length === 0 ? (
                 <div className="empty-state">
@@ -1478,47 +1887,26 @@ export default function AlumnoDashboard() {
                       const montoFormateado =
                         montoNumerico !== null &&
                         Number.isFinite(montoNumerico)
-                          ? montoNumerico.toLocaleString(
-                              "es-AR",
-                              {
-                                style: "currency",
-                                currency: "ARS",
-                              }
-                            )
+                          ? montoNumerico.toLocaleString("es-AR", {
+                              style: "currency",
+                              currency: "ARS",
+                            })
                           : "-";
 
-                      let vencimiento = "";
-
-                      if (cuotaData.fecha_vencimiento) {
-                        const fechaVencimiento = new Date(
-                          String(cuotaData.fecha_vencimiento)
-                        );
-
-                        if (
-                          !Number.isNaN(
-                            fechaVencimiento.getTime()
+                      const vencimiento = cuotaData.fecha_vencimiento
+                        ? formatearFecha(
+                            String(cuotaData.fecha_vencimiento)
                           )
-                        ) {
-                          vencimiento =
-                            fechaVencimiento.toLocaleDateString(
-                              "es-AR"
-                            );
-                        }
-                      }
+                        : "";
 
                       return (
                         <div
                           className="payment-item"
-                          key={
-                            idCuota ??
-                            String(cuotaData.id_cuota ?? Math.random())
-                          }
+                          key={idCuota ?? String(cuotaData.id_cuota)}
                         >
                           <div>
                             <strong
-                              style={{
-                                textTransform: "capitalize",
-                              }}
+                              style={{ textTransform: "capitalize" }}
                             >
                               {obtenerMensajeCuota(cuota)}
                             </strong>
@@ -1568,7 +1956,9 @@ export default function AlumnoDashboard() {
           </section>
         )}
 
-        {/* PERFIL */}
+        {/* =================================================
+            PERFIL
+        ================================================= */}
 
         {seccion === "perfil" && (
           <section className="dashboard-section">
