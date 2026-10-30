@@ -19,6 +19,7 @@ import {
 
 import {
   obtenerCuotasAlumno,
+  verificarAccesoAlumno,
   crearPago,
   type Cuota,
 } from "../services/cuotas-pagos.service";
@@ -311,6 +312,18 @@ export default function AlumnoDashboard() {
     useState<number | null>(null);
 
   // =====================================================
+  // CONTROL DE ACCESO POR CUOTA
+  // =====================================================
+
+  const [accesoPermitido, setAccesoPermitido] =
+    useState<boolean | null>(null);
+
+  const [loadingAcceso, setLoadingAcceso] =
+    useState(false);
+
+  const [errorAcceso, setErrorAcceso] = useState("");
+
+  // =====================================================
   // OBTENER ID DEL ALUMNO
   // =====================================================
 
@@ -376,6 +389,43 @@ export default function AlumnoDashboard() {
 
     void cargarAlumno();
   }, [usuario]);
+
+  // =====================================================
+  // VERIFICAR ACCESO SEGÚN EL ESTADO DE LA CUOTA
+  // =====================================================
+
+  const cargarEstadoAcceso = async () => {
+    if (!idAlumno) return;
+
+    try {
+      setLoadingAcceso(true);
+      setErrorAcceso("");
+
+      const resultado = await verificarAccesoAlumno(idAlumno);
+
+      setAccesoPermitido(resultado.puedeAcceder);
+
+      if (!resultado.puedeAcceder) {
+        // El alumno conserva acceso a la sección de cuotas
+        // para consultar su deuda y realizar el pago.
+        setSeccion("cuotas");
+      }
+    } catch (error: unknown) {
+      console.error("Error verificando acceso del alumno:", error);
+
+      // Ante un error de verificación, no habilitamos por defecto
+      // las funcionalidades académicas.
+      setAccesoPermitido(false);
+      setErrorAcceso(
+        obtenerMensajeError(
+          error,
+          "No se pudo verificar el estado de tu cuota. Intentá nuevamente."
+        )
+      );
+    } finally {
+      setLoadingAcceso(false);
+    }
+  };
 
   // =====================================================
   // CARGAR GRUPOS DEL ALUMNO
@@ -583,13 +633,26 @@ export default function AlumnoDashboard() {
   useEffect(() => {
     if (!idAlumno) return;
 
-    void cargarGrupos();
-    void cargarAsistencias();
+    void cargarEstadoAcceso();
     void cargarCuotas();
 
-    // Se ejecuta cuando se identifica al alumno.
+    // Las funcionalidades académicas solo se consultan
+    // cuando el backend confirma que el alumno tiene acceso.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idAlumno]);
+
+  // =====================================================
+  // CARGAR DATOS ACADÉMICOS SOLO SI TIENE ACCESO
+  // =====================================================
+
+  useEffect(() => {
+    if (!idAlumno || accesoPermitido !== true) return;
+
+    void cargarGrupos();
+    void cargarAsistencias();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idAlumno, accesoPermitido]);
 
   // =====================================================
   // CUANDO ENTRA EN INSCRIBIRME
@@ -773,6 +836,19 @@ export default function AlumnoDashboard() {
   }
 
   // =====================================================
+  // CARGA DEL CONTROL DE ACCESO
+  // =====================================================
+
+  if (loadingAcceso || accesoPermitido === null) {
+    return (
+      <div className="dashboard-loading">
+        <div className="loading-spinner"></div>
+        <p>Verificando el estado de tu cuota...</p>
+      </div>
+    );
+  }
+
+  // =====================================================
   // NOMBRE
   // =====================================================
 
@@ -823,33 +899,37 @@ export default function AlumnoDashboard() {
         </div>
 
         <nav className="sidebar-nav">
-          <button
-            className={seccion === "inicio" ? "active" : ""}
-            onClick={() => setSeccion("inicio")}
-          >
-            🏠 <span>Inicio</span>
-          </button>
+          {accesoPermitido && (
+            <>
+              <button
+                className={seccion === "inicio" ? "active" : ""}
+                onClick={() => setSeccion("inicio")}
+              >
+                🏠 <span>Inicio</span>
+              </button>
 
-          <button
-            className={seccion === "grupos" ? "active" : ""}
-            onClick={() => setSeccion("grupos")}
-          >
-            👥 <span>Mis grupos</span>
-          </button>
+              <button
+                className={seccion === "grupos" ? "active" : ""}
+                onClick={() => setSeccion("grupos")}
+              >
+                👥 <span>Mis grupos</span>
+              </button>
 
-          <button
-            className={seccion === "asistencia" ? "active" : ""}
-            onClick={() => setSeccion("asistencia")}
-          >
-            📋 <span>Asistencia</span>
-          </button>
+              <button
+                className={seccion === "asistencia" ? "active" : ""}
+                onClick={() => setSeccion("asistencia")}
+              >
+                📋 <span>Asistencia</span>
+              </button>
 
-          <button
-            className={seccion === "inscribirme" ? "active" : ""}
-            onClick={() => setSeccion("inscribirme")}
-          >
-            ➕ <span>Inscribirme</span>
-          </button>
+              <button
+                className={seccion === "inscribirme" ? "active" : ""}
+                onClick={() => setSeccion("inscribirme")}
+              >
+                ➕ <span>Inscribirme</span>
+              </button>
+            </>
+          )}
 
           <button
             className={seccion === "cuotas" ? "active" : ""}
@@ -904,9 +984,36 @@ export default function AlumnoDashboard() {
           </div>
         </header>
 
+        {!accesoPermitido && (
+          <div className="dashboard-warning" role="alert">
+            <strong>Acceso académico restringido.</strong>
+            <p>
+              {errorAcceso ||
+                "Tenés una cuota pendiente. Podés consultar tus cuotas y realizar el pago desde esta sección."}
+            </p>
+            <div className="restriction-actions">
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => setSeccion("cuotas")}
+              >
+                Ir a mis cuotas
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void cargarEstadoAcceso()}
+                disabled={loadingAcceso}
+              >
+                {loadingAcceso ? "Verificando..." : "Actualizar estado de pago"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* INICIO */}
 
-        {seccion === "inicio" && (
+        {accesoPermitido && seccion === "inicio" && (
           <section className="dashboard-section">
             <div className="welcome-card">
               <div>
@@ -976,7 +1083,7 @@ export default function AlumnoDashboard() {
 
         {/* MIS GRUPOS */}
 
-        {seccion === "grupos" && (
+        {accesoPermitido && seccion === "grupos" && (
           <section className="dashboard-section">
             <div className="dashboard-card">
               <div className="card-header">
@@ -1073,7 +1180,7 @@ export default function AlumnoDashboard() {
 
         {/* ASISTENCIA */}
 
-        {seccion === "asistencia" && (
+        {accesoPermitido && seccion === "asistencia" && (
           <section className="dashboard-section">
             <div className="dashboard-card">
               <div className="card-header">
@@ -1149,7 +1256,7 @@ export default function AlumnoDashboard() {
 
         {/* INSCRIBIRME */}
 
-        {seccion === "inscribirme" && (
+        {accesoPermitido && seccion === "inscribirme" && (
           <section className="dashboard-section">
             {mensajeInscripcion && (
               <div
