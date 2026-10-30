@@ -1,3 +1,4 @@
+
 import api from '../api/axios';
 
 // ============================================================
@@ -9,7 +10,6 @@ export interface Cuota {
   id_alumno: number;
   id_paquete: number;
 
-  // Estos nombres dependen de lo que devuelva tu backend
   mes?: number;
   anio?: number;
 
@@ -27,6 +27,16 @@ export interface Cuota {
 }
 
 // ============================================================
+// TIPO: ESTADO DE ACCESO DEL ALUMNO
+// ============================================================
+
+export interface EstadoAccesoAlumno {
+  puedeAcceder: boolean;
+  motivo: string | null;
+  mensaje: string;
+}
+
+// ============================================================
 // OBTENER CUOTAS DEL ALUMNO
 // ============================================================
 
@@ -40,6 +50,20 @@ export const obtenerCuotasAlumno = async (
   return Array.isArray(response.data)
     ? response.data
     : [];
+};
+
+// ============================================================
+// VERIFICAR ACCESO DEL ALUMNO
+// ============================================================
+
+export const verificarAccesoAlumno = async (
+  idAlumno: number,
+): Promise<EstadoAccesoAlumno> => {
+  const response = await api.get(
+    `/cuotas/alumno/${idAlumno}/acceso`,
+  );
+
+  return response.data;
 };
 
 // ============================================================
