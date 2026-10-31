@@ -26,21 +26,26 @@ export interface LoginDto {
     contrasena: string;
 }
 
+export interface LoginResult {
+    usuario: Usuario;
+    access_token: string;
+}
+
 export interface LoginResponse {
     statusCode: number;
     message: string;
-    data: Usuario;
+    data: LoginResult;
 }
+
 
 export async function login(
     dto: LoginDto
-): Promise<Usuario> {
+): Promise<LoginResult> {
 
-    const response =
-        await api.post<LoginResponse>(
-            "/alumnos/login",
-            dto
-        );
+    const response = await api.post<LoginResponse>(
+        "/alumnos/login",
+        dto
+    );
 
     return response.data.data;
 }
