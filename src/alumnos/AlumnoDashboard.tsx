@@ -25,7 +25,7 @@ import {
   type Cuota,
 } from "../services/cuotas-pagos.service";
 
-import { obtenerBoletinesAlumno } from "../services/botelines.service";
+import { obtenerBoletinesAlumno, type Boletin } from "../services/botelines.service";
 
 import {
   obtenerPersonasAutorizadas,
@@ -61,23 +61,6 @@ type ErrorBackend = {
   message?: unknown;
 };
 
-type BoletinAlumno = {
-  id_boletin: number;
-  id_alumno: number;
-  id_grupo: number;
-  id_profesor: number;
-  id_periodo: number;
-  periodo?: string;
-  anio: number;
-  fecha_evaluacion: string;
-  observaciones: string | null;
-  disciplina?: string;
-  grupo?: string;
-  profesor?: string;
-  nombre_profesor?: string;
-  apellido_profesor?: string;
-};
-
 // =====================================================
 // FUNCIONES AUXILIARES
 // =====================================================
@@ -100,7 +83,7 @@ function obtenerUsuarioGuardado(): UsuarioGuardado | null {
 
     return usuario as UsuarioGuardado;
   } catch (error) {
-    console.error("No se pudo leer el usuario guardado:", error);
+    console.error("Error leyendo usuario:", error);
     return null;
   }
 }
@@ -123,7 +106,7 @@ function obtenerMensajeError(
 
     if (Array.isArray(mensaje)) {
       const mensajes = mensaje
-        .map((item) => formatearMensaje(item))
+        .map(formatearMensaje)
         .filter((item): item is string => Boolean(item));
 
       return mensajes.length > 0
@@ -134,33 +117,24 @@ function obtenerMensajeError(
     if (typeof mensaje === "object" && mensaje !== null) {
       const objeto = mensaje as Record<string, unknown>;
 
-      const mensajeInterno =
+      return formatearMensaje(
         objeto.message ??
         objeto.mensaje ??
         objeto.error ??
-        objeto.errors;
-
-      if (mensajeInterno !== undefined) {
-        return formatearMensaje(mensajeInterno);
-      }
+        objeto.errors
+      );
     }
 
     return null;
   };
 
-  const mensajeBackend = formatearMensaje(datos?.message);
-  if (mensajeBackend) return mensajeBackend;
-
-  const erroresBackend = formatearMensaje(datos?.errors);
-  if (erroresBackend) return erroresBackend;
-
-  const errorBackendMensaje = formatearMensaje(datos?.error);
-  if (errorBackendMensaje) return errorBackendMensaje;
-
-  const mensajeCliente = formatearMensaje(errorBackend?.message);
-  if (mensajeCliente) return mensajeCliente;
-
-  return mensajePredeterminado;
+  return (
+    formatearMensaje(datos?.message) ??
+    formatearMensaje(datos?.errors) ??
+    formatearMensaje(datos?.error) ??
+    formatearMensaje(errorBackend?.message) ??
+    mensajePredeterminado
+  );
 }
 
 function obtenerIdValido(valor: unknown): number | null {
@@ -173,47 +147,15 @@ function obtenerIdValido(valor: unknown): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function obtenerMensajeCuota(cuota: Cuota): string {
-  const cuotaData = cuota as unknown as Record<string, unknown>;
-
-  const mes = Number(cuotaData.mes);
-  const anio = Number(cuotaData.anio);
-
-  if (Number.isInteger(mes) && mes >= 1 && mes <= 12) {
-    const fecha = new Date(
-      anio || new Date().getFullYear(),
-      mes - 1,
-      1
-    );
-
-    return fecha.toLocaleDateString("es-AR", {
-      month: "long",
-      year: "numeric",
-    });
-  }
-
-  const fechaReferencia =
-    cuotaData.fecha_vencimiento ?? cuotaData.fecha_pago;
-
-  if (fechaReferencia) {
-    const fecha = new Date(String(fechaReferencia));
-
-    if (!Number.isNaN(fecha.getTime())) {
-      return fecha.toLocaleDateString("es-AR", {
-        month: "long",
-        year: "numeric",
-      });
-    }
-  }
-
-  return "Cuota mensual";
-}
+// =====================================================
+// FORMATEO DE FECHAS
+// =====================================================
 
 function formatearFecha(fecha?: string | null): string {
   if (!fecha) return "-";
 
-  const fechaNormalizada = String(fecha).slice(0, 10);
-  const date = new Date(`${fechaNormalizada}T12:00:00`);
+  const normalizada = String(fecha).slice(0, 10);
+  const date = new Date(`${normalizada}T12:00:00`);
 
   if (Number.isNaN(date.getTime())) return "-";
 
@@ -230,8 +172,77 @@ function formatearFechaHora(fecha?: string | null): string {
   return date.toLocaleString("es-AR");
 }
 
+function formatearMoneda(
+  monto?: number | string | null
+): string {
+  if (monto === null || monto === undefined || monto === "") {
+    return "-";
+  }
+
+  const numero = Number(monto);
+
+  if (!Number.isFinite(numero)) return "-";
+
+  return numero.toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+  });
+}
+
 // =====================================================
-// COMPONENTE
+// FORMATEAR PERÍODO DE CUOTA
+// =====================================================
+
+function obtenerMensajeCuota(cuota: Cuota): string {
+  const mesAnio = cuota.mes_anio?.trim();
+
+  if (mesAnio) {
+    const coincidencia = mesAnio.match(/^(\d{1,2})\/(\d{4})$/);
+
+    if (coincidencia) {
+      const mes = Number(coincidencia[1]);
+      const anio = Number(coincidencia[2]);
+
+      if (mes >= 1 && mes <= 12) {
+        return new Date(anio, mes - 1, 1)
+          .toLocaleDateString("es-AR", {
+            month: "long",
+            year: "numeric",
+          });
+      }
+    }
+
+    return mesAnio;
+  }
+
+  if (cuota.periodo) {
+    const fecha = new Date(
+      `${String(cuota.periodo).slice(0, 10)}T12:00:00`
+    );
+
+    if (!Number.isNaN(fecha.getTime())) {
+      return fecha.toLocaleDateString("es-AR", {
+        month: "long",
+        year: "numeric",
+      });
+    }
+
+    return cuota.periodo;
+  }
+
+  if (cuota.mes && cuota.anio) {
+    return new Date(cuota.anio, cuota.mes - 1, 1)
+      .toLocaleDateString("es-AR", {
+        month: "long",
+        year: "numeric",
+      });
+  }
+
+  return "Cuota mensual";
+}
+
+// =====================================================
+// COMPONENTE PRINCIPAL
 // =====================================================
 
 export default function AlumnoDashboard() {
@@ -259,7 +270,7 @@ export default function AlumnoDashboard() {
   const [errorAlumno, setErrorAlumno] = useState("");
 
   // =====================================================
-  // SECCIÓN
+  // NAVEGACIÓN
   // =====================================================
 
   const [seccion, setSeccion] = useState("inicio");
@@ -287,25 +298,32 @@ export default function AlumnoDashboard() {
   const [inscribiendo, setInscribiendo] =
     useState<number | null>(null);
 
-  const [mensajeInscripcion, setMensajeInscripcion] = useState("");
-
   const [eliminandoInscripcion, setEliminandoInscripcion] =
     useState<number | null>(null);
+
+  const [mensajeInscripcion, setMensajeInscripcion] = useState("");
 
   // =====================================================
   // ASISTENCIAS
   // =====================================================
 
-  const [asistencias, setAsistencias] = useState<Asistencia[]>([]);
-  const [loadingAsistencias, setLoadingAsistencias] = useState(false);
+  const [asistencias, setAsistencias] =
+    useState<Asistencia[]>([]);
+
+  const [loadingAsistencias, setLoadingAsistencias] =
+    useState(false);
+
   const [errorAsistencias, setErrorAsistencias] = useState("");
 
   // =====================================================
   // BOLETINES
   // =====================================================
 
-  const [boletines, setBoletines] = useState<BoletinAlumno[]>([]);
-  const [loadingBoletines, setLoadingBoletines] = useState(false);
+  const [boletines, setBoletines] = useState<Boletin[]>([]);
+
+  const [loadingBoletines, setLoadingBoletines] =
+    useState(false);
+
   const [errorBoletines, setErrorBoletines] = useState("");
 
   // =====================================================
@@ -336,6 +354,7 @@ export default function AlumnoDashboard() {
   // =====================================================
 
   const [cuotas, setCuotas] = useState<Cuota[]>([]);
+
   const [loadingCuotas, setLoadingCuotas] = useState(false);
   const [errorCuotas, setErrorCuotas] = useState("");
 
@@ -343,7 +362,7 @@ export default function AlumnoDashboard() {
     useState<number | null>(null);
 
   // =====================================================
-  // CONTROL DE ACCESO
+  // ACCESO ACADÉMICO
   // =====================================================
 
   const [accesoPermitido, setAccesoPermitido] =
@@ -353,74 +372,79 @@ export default function AlumnoDashboard() {
   const [errorAcceso, setErrorAcceso] = useState("");
 
   // =====================================================
-  // OBTENER ID DEL ALUMNO
+  // OBTENER ALUMNO
   // =====================================================
 
   useEffect(() => {
+    let activo = true;
+
     const cargarAlumno = async () => {
       try {
         setLoadingAlumno(true);
         setErrorAlumno("");
 
         if (!usuario) {
-          setErrorAlumno(
+          throw new Error(
             "No se encontró información válida del usuario. Iniciá sesión nuevamente."
           );
-          return;
         }
 
         const idUsuario = obtenerIdValido(
           usuario.id_usuario ??
-            usuario.idUsuario ??
-            usuario.id
+          usuario.idUsuario ??
+          usuario.id
         );
 
         if (!idUsuario) {
-          setErrorAlumno(
-            "No se pudo obtener un ID de usuario válido. Iniciá sesión nuevamente."
+          throw new Error(
+            "No se pudo obtener un ID de usuario válido."
           );
-          return;
         }
 
         const respuesta =
           await obtenerIdAlumnoPorUsuario(idUsuario);
 
-        console.log("RESPUESTA DE NESTJS:", respuesta);
-
         const idObtenido = obtenerIdValido(respuesta);
 
         if (!idObtenido) {
-          setErrorAlumno(
-            "No se pudo obtener un ID de alumno válido para este usuario."
+          throw new Error(
+            "No se pudo obtener un ID de alumno válido."
           );
-          return;
         }
+
+        if (!activo) return;
 
         setIdAlumno(idObtenido);
         setAlumno(usuario);
       } catch (error: unknown) {
         console.error("Error obteniendo alumno:", error);
 
-        setErrorAlumno(
-          obtenerMensajeError(
-            error,
-            "No se pudo obtener la información del alumno."
-          )
-        );
+        if (activo) {
+          setErrorAlumno(
+            obtenerMensajeError(
+              error,
+              "No se pudo obtener la información del alumno."
+            )
+          );
+        }
       } finally {
-        setLoadingAlumno(false);
+        if (activo) setLoadingAlumno(false);
       }
     };
 
     void cargarAlumno();
+
+    return () => {
+      activo = false;
+    };
   }, [usuario]);
 
   // =====================================================
   // VERIFICAR ACCESO
   // =====================================================
 
-  const cargarEstadoAcceso = async () => {
-    if (!idAlumno) return;
+  const cargarEstadoAcceso = async (): Promise<boolean | null> => {
+    if (!idAlumno) return null;
 
     try {
       setLoadingAcceso(true);
@@ -428,29 +452,35 @@ export default function AlumnoDashboard() {
 
       const resultado = await verificarAccesoAlumno(idAlumno);
 
-      setAccesoPermitido(resultado.puedeAcceder);
+      const permitido = resultado.puedeAcceder === true;
 
-      if (!resultado.puedeAcceder) {
+      setAccesoPermitido(permitido);
+
+      if (!permitido) {
         setSeccion("cuotas");
       }
+
+      return permitido;
     } catch (error: unknown) {
       console.error("Error verificando acceso:", error);
 
-      setAccesoPermitido(false);
+      setAccesoPermitido(null);
 
       setErrorAcceso(
         obtenerMensajeError(
           error,
-          "No se pudo verificar el estado de tu cuota. Intentá nuevamente."
+          "No se pudo verificar el estado de tu cuota."
         )
       );
+
+      return null;
     } finally {
       setLoadingAcceso(false);
     }
   };
 
   // =====================================================
-  // CARGAR GRUPOS
+  // CARGAR GRUPOS DEL ALUMNO
   // =====================================================
 
   const cargarGrupos = async () => {
@@ -486,10 +516,11 @@ export default function AlumnoDashboard() {
       setErrorGruposDisponibles("");
 
       const datos = await obtenerGruposDisponibles();
-      const lista = Array.isArray(datos) ? datos : [];
 
       setGruposDisponibles(
-        lista.filter((grupo) => grupo.activo !== false)
+        Array.isArray(datos)
+          ? datos.filter((grupo) => grupo.activo !== false)
+          : []
       );
     } catch (error: unknown) {
       console.error("Error obteniendo grupos disponibles:", error);
@@ -550,9 +581,7 @@ export default function AlumnoDashboard() {
 
       const datos = await obtenerBoletinesAlumno(idAlumno);
 
-      setBoletines(
-        Array.isArray(datos) ? (datos as BoletinAlumno[]) : []
-      );
+      setBoletines(Array.isArray(datos) ? datos : []);
     } catch (error: unknown) {
       console.error("Error obteniendo boletines:", error);
 
@@ -622,7 +651,7 @@ export default function AlumnoDashboard() {
         Array.isArray(datos) ? datos : []
       );
     } catch (error: unknown) {
-      console.error("Error obteniendo historial de retiros:", error);
+      console.error("Error obteniendo historial:", error);
 
       setErrorRetiros(
         obtenerMensajeError(
@@ -665,6 +694,64 @@ export default function AlumnoDashboard() {
   };
 
   // =====================================================
+  // ACTUALIZAR ESTADO DE PAGO
+  // =====================================================
+
+  const actualizarEstadoPago = async () => {
+    if (!idAlumno) return;
+
+    try {
+      setLoadingCuotas(true);
+      setLoadingAcceso(true);
+
+      setErrorCuotas("");
+      setErrorAcceso("");
+
+      const [datosCuotas, resultadoAcceso] = await Promise.all([
+        obtenerCuotasAlumno(idAlumno),
+        verificarAccesoAlumno(idAlumno),
+      ]);
+
+      setCuotas(Array.isArray(datosCuotas) ? datosCuotas : []);
+
+      const permitido = resultadoAcceso.puedeAcceder === true;
+
+      setAccesoPermitido(permitido);
+
+      if (!permitido) {
+        setSeccion("cuotas");
+      }
+
+      await Swal.fire({
+        icon: permitido ? "success" : "warning",
+        title: permitido
+          ? "Acceso habilitado"
+          : "Acceso todavía restringido",
+        text: resultadoAcceso.mensaje,
+        confirmButtonText: "Aceptar",
+      });
+    } catch (error: unknown) {
+      console.error("Error actualizando pago:", error);
+
+      const mensaje = obtenerMensajeError(
+        error,
+        "No se pudo actualizar el estado del pago."
+      );
+
+      setErrorAcceso(mensaje);
+
+      await Swal.fire({
+        icon: "error",
+        title: "Error al actualizar",
+        text: mensaje,
+      });
+    } finally {
+      setLoadingCuotas(false);
+      setLoadingAcceso(false);
+    }
+  };
+
+  // =====================================================
   // PAGAR CUOTA
   // =====================================================
 
@@ -673,8 +760,7 @@ export default function AlumnoDashboard() {
       await Swal.fire({
         icon: "error",
         title: "Cuota inválida",
-        text: "No se pudo identificar la cuota que querés pagar.",
-        confirmButtonText: "Aceptar",
+        text: "No se pudo identificar la cuota.",
       });
       return;
     }
@@ -697,8 +783,7 @@ export default function AlumnoDashboard() {
       await Swal.fire({
         icon: "success",
         title: "Pago creado",
-        text: "Se creó el pago, pero el backend no devolvió una URL de pago.",
-        confirmButtonText: "Aceptar",
+        text: "El pago fue creado, pero no se recibió una URL de Mercado Pago.",
       });
 
       await cargarCuotas();
@@ -708,8 +793,10 @@ export default function AlumnoDashboard() {
       await Swal.fire({
         icon: "error",
         title: "No se pudo iniciar el pago",
-        text: obtenerMensajeError(error, "No se pudo iniciar el pago."),
-        confirmButtonText: "Aceptar",
+        text: obtenerMensajeError(
+          error,
+          "No se pudo iniciar el pago."
+        ),
       });
     } finally {
       setPagandoCuota(null);
@@ -730,7 +817,7 @@ export default function AlumnoDashboard() {
   }, [idAlumno]);
 
   // =====================================================
-  // CARGAR INFORMACIÓN ACADÉMICA
+  // INFORMACIÓN ACADÉMICA
   // =====================================================
 
   useEffect(() => {
@@ -743,7 +830,7 @@ export default function AlumnoDashboard() {
   }, [idAlumno, accesoPermitido]);
 
   // =====================================================
-  // CARGAR BOLETINES Y RETIROS
+  // BOLETINES Y RETIROS
   // =====================================================
 
   useEffect(() => {
@@ -757,7 +844,7 @@ export default function AlumnoDashboard() {
   }, [idAlumno]);
 
   // =====================================================
-  // CARGAR GRUPOS DISPONIBLES
+  // GRUPOS DISPONIBLES
   // =====================================================
 
   useEffect(() => {
@@ -769,7 +856,7 @@ export default function AlumnoDashboard() {
   }, [seccion]);
 
   // =====================================================
-  // INSCRIBIRSE A UN GRUPO
+  // INSCRIBIRSE
   // =====================================================
 
   const handleInscribirse = async (idGrupo: number) => {
@@ -786,7 +873,7 @@ export default function AlumnoDashboard() {
       await Swal.fire({
         icon: "error",
         title: "Grupo inválido",
-        text: "No se pudo identificar el grupo seleccionado.",
+        text: "No se pudo identificar el grupo.",
       });
       return;
     }
@@ -807,8 +894,10 @@ export default function AlumnoDashboard() {
         text: "Te inscribiste correctamente al grupo.",
       });
 
-      await cargarGrupos();
-      await cargarGruposDisponibles();
+      await Promise.all([
+        cargarGrupos(),
+        cargarGruposDisponibles(),
+      ]);
     } catch (error: unknown) {
       console.error("Error inscribiendo:", error);
 
@@ -830,7 +919,7 @@ export default function AlumnoDashboard() {
   };
 
   // =====================================================
-  // ELIMINAR INSCRIPCIÓN
+  // CANCELAR INSCRIPCIÓN
   // =====================================================
 
   const handleEliminarInscripcion = async (
@@ -845,19 +934,19 @@ export default function AlumnoDashboard() {
       return;
     }
 
+    const confirmacion = await Swal.fire({
+      icon: "warning",
+      title: "¿Cancelar inscripción?",
+      text: "Se eliminará tu inscripción y se devolverá el crédito utilizado.",
+      showCancelButton: true,
+      confirmButtonText: "Sí, cancelar",
+      cancelButtonText: "No",
+      confirmButtonColor: "#d33",
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
     try {
-      const resultado = await Swal.fire({
-        icon: "warning",
-        title: "¿Cancelar inscripción?",
-        text: "Se eliminará tu inscripción y se devolverá el crédito utilizado.",
-        showCancelButton: true,
-        confirmButtonText: "Sí, cancelar",
-        cancelButtonText: "No",
-        confirmButtonColor: "#d33",
-      });
-
-      if (!resultado.isConfirmed) return;
-
       setEliminandoInscripcion(idInscripcion);
 
       await eliminarInscripcion(idInscripcion);
@@ -865,17 +954,19 @@ export default function AlumnoDashboard() {
       await Swal.fire({
         icon: "success",
         title: "Inscripción cancelada",
-        text: "La inscripción fue eliminada y se devolvió el crédito.",
+        text: "La inscripción fue eliminada correctamente.",
       });
 
-      await cargarGrupos();
-      await cargarGruposDisponibles();
+      await Promise.all([
+        cargarGrupos(),
+        cargarGruposDisponibles(),
+      ]);
     } catch (error: unknown) {
       console.error("Error eliminando inscripción:", error);
 
       await Swal.fire({
         icon: "error",
-        title: "No se pudo cancelar la inscripción",
+        title: "No se pudo cancelar",
         text: obtenerMensajeError(
           error,
           "No se pudo eliminar la inscripción."
@@ -896,7 +987,7 @@ export default function AlumnoDashboard() {
   };
 
   // =====================================================
-  // ESTADOS DE CARGA Y ERROR
+  // ESTADOS GENERALES
   // =====================================================
 
   if (loadingAlumno) {
@@ -921,7 +1012,7 @@ export default function AlumnoDashboard() {
     );
   }
 
-  if (loadingAcceso || accesoPermitido === null) {
+  if (loadingAcceso || (accesoPermitido === null && !errorAcceso)) {
     return (
       <div className="dashboard-loading">
         <div className="loading-spinner" />
@@ -934,8 +1025,11 @@ export default function AlumnoDashboard() {
   // DATOS DEL ALUMNO
   // =====================================================
 
-  const nombreAlumno = alumno?.nombre ?? usuario?.nombre ?? "Alumno";
-  const apellidoAlumno = alumno?.apellido ?? usuario?.apellido ?? "";
+  const nombreAlumno =
+    alumno?.nombre ?? usuario?.nombre ?? "Alumno";
+
+  const apellidoAlumno =
+    alumno?.apellido ?? usuario?.apellido ?? "";
 
   const nombreCompleto =
     `${nombreAlumno} ${apellidoAlumno}`.trim();
@@ -957,11 +1051,13 @@ export default function AlumnoDashboard() {
 
   return (
     <div className="alumno-dashboard">
+
       {/* =================================================
           SIDEBAR
       ================================================= */}
 
       <aside className="sidebar">
+
         <div className="sidebar-logo">
           <div className="logo-icon">NE</div>
 
@@ -983,9 +1079,8 @@ export default function AlumnoDashboard() {
         </div>
 
         <nav className="sidebar-nav">
-          {/* FUNCIONES ACADÉMICAS CON ACCESO HABILITADO */}
 
-          {accesoPermitido && (
+          {accesoPermitido === true && (
             <>
               <button
                 className={seccion === "inicio" ? "active" : ""}
@@ -1017,8 +1112,6 @@ export default function AlumnoDashboard() {
             </>
           )}
 
-          {/* BOLETINES Y RETIROS */}
-
           <button
             className={seccion === "boletines" ? "active" : ""}
             onClick={() => setSeccion("boletines")}
@@ -1042,8 +1135,6 @@ export default function AlumnoDashboard() {
             🕒 <span>Historial de retiros</span>
           </button>
 
-          {/* CUOTAS Y PERFIL */}
-
           <button
             className={seccion === "cuotas" ? "active" : ""}
             onClick={() => setSeccion("cuotas")}
@@ -1057,11 +1148,13 @@ export default function AlumnoDashboard() {
           >
             👤 <span>Mi perfil</span>
           </button>
+
         </nav>
 
         <button className="logout-button" onClick={cerrarSesion}>
           🚪 <span>Cerrar sesión</span>
         </button>
+
       </aside>
 
       {/* =================================================
@@ -1069,9 +1162,11 @@ export default function AlumnoDashboard() {
       ================================================= */}
 
       <main className="dashboard-main">
+
         {/* HEADER */}
 
         <header className="dashboard-header">
+
           <div>
             <h1>
               {seccion === "inicio" && "¡Bienvenido de nuevo!"}
@@ -1080,8 +1175,7 @@ export default function AlumnoDashboard() {
               {seccion === "inscribirme" && "Inscribirme"}
               {seccion === "boletines" && "Mis boletines"}
               {seccion === "retiros" && "Personas autorizadas"}
-              {seccion === "historial-retiros" &&
-                "Historial de retiros"}
+              {seccion === "historial-retiros" && "Historial de retiros"}
               {seccion === "cuotas" && "Mis cuotas"}
               {seccion === "perfil" && "Mi perfil"}
             </h1>
@@ -1098,13 +1192,21 @@ export default function AlumnoDashboard() {
               {nombreAlumno.charAt(0).toUpperCase()}
             </div>
           </div>
+
         </header>
 
-        {/* RESTRICCIÓN DE ACCESO */}
+        {/* =================================================
+            RESTRICCIÓN DE ACCESO
+        ================================================= */}
 
-        {!accesoPermitido && (
+        {accesoPermitido !== true && (
           <div className="dashboard-warning" role="alert">
-            <strong>Acceso académico restringido.</strong>
+
+            <strong>
+              {accesoPermitido === false
+                ? "Acceso académico restringido."
+                : "No se pudo verificar tu acceso académico."}
+            </strong>
 
             <p>
               {errorAcceso ||
@@ -1112,6 +1214,7 @@ export default function AlumnoDashboard() {
             </p>
 
             <div className="restriction-actions">
+
               <button
                 type="button"
                 className="primary-button"
@@ -1130,6 +1233,7 @@ export default function AlumnoDashboard() {
                   ? "Verificando..."
                   : "Actualizar estado de pago"}
               </button>
+
             </div>
           </div>
         )}
@@ -1138,8 +1242,9 @@ export default function AlumnoDashboard() {
             INICIO
         ================================================= */}
 
-        {accesoPermitido && seccion === "inicio" && (
+        {accesoPermitido === true && seccion === "inicio" && (
           <section className="dashboard-section">
+
             <div className="welcome-card">
               <div>
                 <span>¡Hola!</span>
@@ -1151,6 +1256,7 @@ export default function AlumnoDashboard() {
             </div>
 
             <div className="stats-grid">
+
               <div className="stat-card">
                 <div className="stat-icon">👥</div>
                 <div>
@@ -1182,9 +1288,11 @@ export default function AlumnoDashboard() {
                   <strong>{boletines.length}</strong>
                 </div>
               </div>
+
             </div>
 
             <div className="dashboard-card">
+
               <div className="card-header">
                 <div>
                   <h3>Información del alumno</h3>
@@ -1193,6 +1301,7 @@ export default function AlumnoDashboard() {
               </div>
 
               <div className="student-info-grid">
+
                 <div>
                   <span>Nombre</span>
                   <strong>{nombreAlumno}</strong>
@@ -1209,8 +1318,10 @@ export default function AlumnoDashboard() {
                     {usuario?.username ?? usuario?.email ?? "-"}
                   </strong>
                 </div>
+
               </div>
             </div>
+
           </section>
         )}
 
@@ -1218,14 +1329,25 @@ export default function AlumnoDashboard() {
             MIS GRUPOS
         ================================================= */}
 
-        {accesoPermitido && seccion === "grupos" && (
+        {accesoPermitido === true && seccion === "grupos" && (
           <section className="dashboard-section">
+
             <div className="dashboard-card">
+
               <div className="card-header">
                 <div>
                   <h3>Mis grupos</h3>
                   <p>Grupos en los que estás inscripto</p>
                 </div>
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => void cargarGrupos()}
+                  disabled={loadingGrupos}
+                >
+                  {loadingGrupos ? "Actualizando..." : "Actualizar"}
+                </button>
               </div>
 
               {loadingGrupos ? (
@@ -1253,62 +1375,62 @@ export default function AlumnoDashboard() {
                 </div>
               ) : (
                 <div className="groups-grid">
+
                   {grupos.map((grupo) => (
-                    <div
-                      className="group-card"
-                      key={grupo.id_grupo}
-                    >
+                    <div className="group-card" key={grupo.id_grupo}>
+
                       <div className="group-card-header">
                         <span>{grupo.disciplina}</span>
                         <span>{grupo.nivel}</span>
                       </div>
 
                       <h3>{grupo.disciplina}</h3>
+
                       <p>Nivel: {grupo.nivel}</p>
 
                       {grupo.profesor && (
                         <p>👨‍🏫 Profesor: {grupo.profesor}</p>
                       )}
 
-                      {grupo.horarios &&
-                        grupo.horarios.length > 0 && (
-                          <div className="group-schedule">
-                            {grupo.horarios.map((horario) => (
-                              <div key={horario.id_horario}>
-                                📅 {horario.dia_semana}
-                                <br />
-                                🕐 {horario.hora_inicio}
-                                {" - "}
-                                {horario.hora_fin}
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      {grupo.horarios && grupo.horarios.length > 0 && (
+                        <div className="group-schedule">
+                          {grupo.horarios.map((horario) => (
+                            <div key={horario.id_horario}>
+                              📅 {horario.dia_semana}
+                              <br />
+                              🕐 {horario.hora_inicio}
+                              {" - "}
+                              {horario.hora_fin}
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       {grupo.id_inscripcion && (
                         <button
                           type="button"
                           className="secondary-button"
                           disabled={
-                            eliminandoInscripcion ===
-                            grupo.id_inscripcion
+                            eliminandoInscripcion === grupo.id_inscripcion
                           }
                           onClick={() =>
-                            handleEliminarInscripcion(
+                            void handleEliminarInscripcion(
                               grupo.id_inscripcion!
                             )
                           }
                         >
-                          {eliminandoInscripcion ===
-                          grupo.id_inscripcion
+                          {eliminandoInscripcion === grupo.id_inscripcion
                             ? "Cancelando..."
                             : "Cancelar inscripción"}
                         </button>
                       )}
+
                     </div>
                   ))}
+
                 </div>
               )}
+
             </div>
           </section>
         )}
@@ -1317,14 +1439,25 @@ export default function AlumnoDashboard() {
             ASISTENCIAS
         ================================================= */}
 
-        {accesoPermitido && seccion === "asistencia" && (
+        {accesoPermitido === true && seccion === "asistencia" && (
           <section className="dashboard-section">
+
             <div className="dashboard-card">
+
               <div className="card-header">
                 <div>
                   <h3>Historial de asistencia</h3>
                   <p>Consultá tus asistencias</p>
                 </div>
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => void cargarAsistencias()}
+                  disabled={loadingAsistencias}
+                >
+                  {loadingAsistencias ? "Actualizando..." : "Actualizar"}
+                </button>
               </div>
 
               {loadingAsistencias ? (
@@ -1345,7 +1478,9 @@ export default function AlumnoDashboard() {
                 </div>
               ) : (
                 <div className="attendance-table-wrapper">
+
                   <table className="attendance-table">
+
                     <thead>
                       <tr>
                         <th>Fecha</th>
@@ -1356,35 +1491,42 @@ export default function AlumnoDashboard() {
                     </thead>
 
                     <tbody>
-                      {asistencias.map((asistencia) => (
-                        <tr key={asistencia.id_asistencia}>
-                          <td>
-                            {asistencia.fecha
-                              ? formatearFecha(asistencia.fecha)
-                              : "-"}
-                          </td>
+                      {asistencias.map((asistencia) => {
+                        const presente =
+                          asistencia.estado?.toLowerCase() === "presente";
 
-                          <td>{asistencia.grupo ?? "-"}</td>
-                          <td>{asistencia.disciplina ?? "-"}</td>
+                        return (
+                          <tr key={asistencia.id_asistencia}>
 
-                          <td>
-                            <span
-                              className={
-                                asistencia.estado?.toLowerCase() ===
-                                "presente"
-                                  ? "status-present"
-                                  : "status-absent"
-                              }
-                            >
-                              {asistencia.estado}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                            <td>
+                              {formatearFecha(asistencia.fecha)}
+                            </td>
+
+                            <td>{asistencia.grupo ?? "-"}</td>
+
+                            <td>{asistencia.disciplina ?? "-"}</td>
+
+                            <td>
+                              <span
+                                className={
+                                  presente
+                                    ? "status-present"
+                                    : "status-absent"
+                                }
+                              >
+                                {asistencia.estado}
+                              </span>
+                            </td>
+
+                          </tr>
+                        );
+                      })}
                     </tbody>
+
                   </table>
                 </div>
               )}
+
             </div>
           </section>
         )}
@@ -1393,8 +1535,9 @@ export default function AlumnoDashboard() {
             INSCRIBIRME
         ================================================= */}
 
-        {accesoPermitido && seccion === "inscribirme" && (
+        {accesoPermitido === true && seccion === "inscribirme" && (
           <section className="dashboard-section">
+
             {mensajeInscripcion && (
               <div
                 className="dashboard-success"
@@ -1406,6 +1549,7 @@ export default function AlumnoDashboard() {
             )}
 
             <div className="dashboard-card">
+
               <div className="card-header">
                 <div>
                   <h3>Grupos disponibles</h3>
@@ -1428,62 +1572,61 @@ export default function AlumnoDashboard() {
                   <div className="empty-icon">📚</div>
                   <h3>No hay grupos disponibles</h3>
                   <p>
-                    En este momento no hay grupos disponibles
-                    para inscribirse.
+                    En este momento no hay grupos disponibles para inscribirse.
                   </p>
                 </div>
               ) : (
                 <div className="groups-grid">
+
                   {gruposDisponiblesFiltrados.map((grupo) => (
-                    <div
-                      className="group-card"
-                      key={grupo.id_grupo}
-                    >
+                    <div className="group-card" key={grupo.id_grupo}>
+
                       <div className="group-card-header">
                         <span>{grupo.disciplina}</span>
                         <span>{grupo.nivel}</span>
                       </div>
 
                       <h3>{grupo.disciplina}</h3>
+
                       <p>Nivel: {grupo.nivel}</p>
 
                       {grupo.profesor && (
                         <p>👨‍🏫 Profesor: {grupo.profesor}</p>
                       )}
 
-                      {grupo.horarios &&
-                        grupo.horarios.length > 0 && (
-                          <div className="group-schedule">
-                            {grupo.horarios.map((horario) => (
-                              <div key={horario.id_horario}>
-                                📅 {horario.dia_semana}
-                                <br />
-                                🕐 {horario.hora_inicio}
-                                {" - "}
-                                {horario.hora_fin}
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      {grupo.horarios && grupo.horarios.length > 0 && (
+                        <div className="group-schedule">
+                          {grupo.horarios.map((horario) => (
+                            <div key={horario.id_horario}>
+                              📅 {horario.dia_semana}
+                              <br />
+                              🕐 {horario.hora_inicio}
+                              {" - "}
+                              {horario.hora_fin}
+                            </div>
+                          ))}
+                        </div>
+                      )}
 
                       <button
                         type="button"
                         className="primary-button"
-                        disabled={
-                          inscribiendo === grupo.id_grupo
-                        }
+                        disabled={inscribiendo === grupo.id_grupo}
                         onClick={() =>
-                          handleInscribirse(grupo.id_grupo)
+                          void handleInscribirse(grupo.id_grupo)
                         }
                       >
                         {inscribiendo === grupo.id_grupo
                           ? "Inscribiendo..."
                           : "Inscribirme"}
                       </button>
+
                     </div>
                   ))}
+
                 </div>
               )}
+
             </div>
           </section>
         )}
@@ -1494,13 +1637,14 @@ export default function AlumnoDashboard() {
 
         {seccion === "boletines" && (
           <section className="dashboard-section">
+
             <div className="dashboard-card">
+
               <div className="card-header">
                 <div>
                   <h3>Mis boletines</h3>
                   <p>
-                    Consultá tus evaluaciones y observaciones de los
-                    profesores.
+                    Consultá tus evaluaciones y observaciones de los profesores.
                   </p>
                 </div>
 
@@ -1510,9 +1654,7 @@ export default function AlumnoDashboard() {
                   onClick={() => void cargarBoletines()}
                   disabled={loadingBoletines}
                 >
-                  {loadingBoletines
-                    ? "Actualizando..."
-                    : "Actualizar"}
+                  {loadingBoletines ? "Actualizando..." : "Actualizar"}
                 </button>
               </div>
 
@@ -1535,31 +1677,37 @@ export default function AlumnoDashboard() {
                 </div>
               ) : (
                 <div className="groups-grid">
+
                   {boletines.map((boletin) => (
                     <article
                       className="group-card"
                       key={boletin.id_boletin}
                     >
+
                       <div className="group-card-header">
                         <span>
                           {boletin.periodo ?? "Período de evaluación"}
                         </span>
+
                         <span>{boletin.anio}</span>
                       </div>
 
                       <h3>
                         {boletin.disciplina ??
-                          boletin.grupo ??
-                          "Evaluación"}
+                          "Evaluación académica"}
                       </h3>
+
+                      {boletin.nivel && (
+                        <p>
+                          <strong>Nivel:</strong> {boletin.nivel}
+                        </p>
+                      )}
 
                       <p>
                         <strong>Profesor:</strong>{" "}
-                        {boletin.nombre_profesor
-                          ? `${boletin.nombre_profesor} ${
-                              boletin.apellido_profesor ?? ""
-                            }`
-                          : boletin.profesor ?? "No informado"}
+                        {`${boletin.nombre_profesor ?? ""} ${
+                          boletin.apellido_profesor ?? ""
+                        }`.trim() || "No informado"}
                       </p>
 
                       <p>
@@ -1568,6 +1716,7 @@ export default function AlumnoDashboard() {
                       </p>
 
                       <div className="student-info-grid">
+
                         <div>
                           <span>Período</span>
                           <strong>
@@ -1579,19 +1728,24 @@ export default function AlumnoDashboard() {
                           <span>Año</span>
                           <strong>{boletin.anio}</strong>
                         </div>
+
                       </div>
 
                       <div className="dashboard-card">
                         <strong>Observaciones del profesor</strong>
+
                         <p>
                           {boletin.observaciones?.trim() ||
                             "No se registraron observaciones."}
                         </p>
                       </div>
+
                     </article>
                   ))}
+
                 </div>
               )}
+
             </div>
           </section>
         )}
@@ -1602,13 +1756,14 @@ export default function AlumnoDashboard() {
 
         {seccion === "retiros" && (
           <section className="dashboard-section">
+
             <div className="dashboard-card">
+
               <div className="card-header">
                 <div>
                   <h3>Personas autorizadas</h3>
                   <p>
-                    Adultos registrados que pueden retirarte de la
-                    academia.
+                    Adultos registrados que pueden retirarte de la academia.
                   </p>
                 </div>
 
@@ -1626,11 +1781,12 @@ export default function AlumnoDashboard() {
 
               <div className="dashboard-warning">
                 <strong>Información importante</strong>
+
                 <p>
                   La entrega se realiza únicamente después de que
-                  el profesor verifique la identidad del adulto
-                  autorizado. Si algún dato es incorrecto, comunicate
-                  con la administración de New Era.
+                  el profesor verifique la identidad del adulto autorizado.
+                  Si algún dato es incorrecto, comunicate con la
+                  administración de New Era.
                 </p>
               </div>
 
@@ -1653,11 +1809,13 @@ export default function AlumnoDashboard() {
                 </div>
               ) : (
                 <div className="groups-grid">
+
                   {personasAutorizadas.map((persona) => (
                     <article
                       className="group-card"
                       key={persona.id_autorizada}
                     >
+
                       <div className="group-card-header">
                         <span>Persona autorizada</span>
                         <span>Activa</span>
@@ -1680,10 +1838,13 @@ export default function AlumnoDashboard() {
                         <strong>Teléfono:</strong>{" "}
                         {persona.telefono || "No informado"}
                       </p>
+
                     </article>
                   ))}
+
                 </div>
               )}
+
             </div>
           </section>
         )}
@@ -1694,7 +1855,9 @@ export default function AlumnoDashboard() {
 
         {seccion === "historial-retiros" && (
           <section className="dashboard-section">
+
             <div className="dashboard-card">
+
               <div className="card-header">
                 <div>
                   <h3>Historial de retiros</h3>
@@ -1727,13 +1890,14 @@ export default function AlumnoDashboard() {
                   <div className="empty-icon">🕒</div>
                   <h3>Sin retiros registrados</h3>
                   <p>
-                    Todavía no hay registros de retiros asociados a
-                    tu alumno.
+                    Todavía no hay registros de retiros asociados a tu alumno.
                   </p>
                 </div>
               ) : (
                 <div className="attendance-table-wrapper">
+
                   <table className="attendance-table">
+
                     <thead>
                       <tr>
                         <th>Fecha y hora</th>
@@ -1747,6 +1911,7 @@ export default function AlumnoDashboard() {
                     <tbody>
                       {historialRetiros.map((retiro) => (
                         <tr key={retiro.id_retiro}>
+
                           <td>
                             {formatearFechaHora(retiro.fecha_hora)}
                           </td>
@@ -1764,12 +1929,15 @@ export default function AlumnoDashboard() {
                             {retiro.nombre_profesor}{" "}
                             {retiro.apellido_profesor}
                           </td>
+
                         </tr>
                       ))}
                     </tbody>
+
                   </table>
                 </div>
               )}
+
             </div>
           </section>
         )}
@@ -1780,7 +1948,9 @@ export default function AlumnoDashboard() {
 
         {seccion === "cuotas" && (
           <section className="dashboard-section">
+
             <div className="dashboard-card">
+
               <div className="card-header">
                 <div>
                   <h3>Mis cuotas</h3>
@@ -1792,10 +1962,12 @@ export default function AlumnoDashboard() {
                 <button
                   type="button"
                   className="secondary-button"
-                  onClick={() => void cargarCuotas()}
-                  disabled={loadingCuotas}
+                  onClick={() => void actualizarEstadoPago()}
+                  disabled={loadingCuotas || loadingAcceso}
                 >
-                  {loadingCuotas ? "Actualizando..." : "Actualizar"}
+                  {loadingCuotas || loadingAcceso
+                    ? "Actualizando..."
+                    : "Actualizar"}
                 </button>
               </div>
 
@@ -1817,31 +1989,24 @@ export default function AlumnoDashboard() {
                 </div>
               ) : (
                 <div className="payment-history">
+
                   <h3>Historial mensual</h3>
 
                   {cuotas
                     .slice()
                     .sort((a, b) => {
-                      const cuotaA =
-                        a as unknown as Record<string, unknown>;
-
-                      const cuotaB =
-                        b as unknown as Record<string, unknown>;
-
                       const fechaA = new Date(
-                        String(
-                          cuotaA.fecha_vencimiento ??
-                            cuotaA.fecha_pago ??
-                            ""
-                        )
+                        a.fecha_vencimiento ??
+                        a.vencimiento ??
+                        a.fecha_pago ??
+                        ""
                       ).getTime();
 
                       const fechaB = new Date(
-                        String(
-                          cuotaB.fecha_vencimiento ??
-                            cuotaB.fecha_pago ??
-                            ""
-                        )
+                        b.fecha_vencimiento ??
+                        b.vencimiento ??
+                        b.fecha_pago ??
+                        ""
                       ).getTime();
 
                       return (
@@ -1850,61 +2015,43 @@ export default function AlumnoDashboard() {
                       );
                     })
                     .map((cuota) => {
-                      const cuotaData =
-                        cuota as unknown as Record<string, unknown>;
 
                       const idCuota = obtenerIdValido(
-                        cuotaData.id_cuota
+                        cuota.id_cuota
                       );
 
                       const estado = String(
-                        cuotaData.estado ?? ""
-                      ).toLowerCase();
+                        cuota.estado ?? ""
+                      ).trim().toLowerCase();
 
                       const pagada =
-                        estado === "pagado" ||
-                        estado === "pagada" ||
-                        estado === "paga" ||
-                        estado === "paid" ||
-                        Boolean(cuotaData.fecha_pago);
+                        [
+                          "pagado",
+                          "pagada",
+                          "paga",
+                          "paid",
+                          "aprobado",
+                          "aprobada",
+                        ].includes(estado) ||
+                        Boolean(cuota.fecha_pago);
 
                       const monto =
-                        cuotaData.monto ??
-                        cuotaData.precio ??
-                        (
-                          cuotaData.paquete as
-                            | Record<string, unknown>
-                            | undefined
-                        )?.precio;
+                        cuota.monto ??
+                        cuota.precio ??
+                        cuota.paquete?.precio;
 
-                      const montoNumerico =
-                        monto !== undefined &&
-                        monto !== null &&
-                        monto !== ""
-                          ? Number(monto)
-                          : null;
-
-                      const montoFormateado =
-                        montoNumerico !== null &&
-                        Number.isFinite(montoNumerico)
-                          ? montoNumerico.toLocaleString("es-AR", {
-                              style: "currency",
-                              currency: "ARS",
-                            })
-                          : "-";
-
-                      const vencimiento = cuotaData.fecha_vencimiento
-                        ? formatearFecha(
-                            String(cuotaData.fecha_vencimiento)
-                          )
-                        : "";
+                      const vencimiento =
+                        cuota.fecha_vencimiento ??
+                        cuota.vencimiento;
 
                       return (
                         <div
                           className="payment-item"
-                          key={idCuota ?? String(cuotaData.id_cuota)}
+                          key={idCuota ?? cuota.id_cuota}
                         >
+
                           <div>
+
                             <strong
                               style={{ textTransform: "capitalize" }}
                             >
@@ -1915,11 +2062,20 @@ export default function AlumnoDashboard() {
                               {pagada
                                 ? "Pago registrado"
                                 : vencimiento
-                                  ? `Vencimiento: ${vencimiento}`
+                                  ? `Vencimiento: ${formatearFecha(vencimiento)}`
                                   : "Pago pendiente"}
                               {" · "}
-                              {montoFormateado}
+                              {formatearMoneda(monto)}
                             </span>
+
+                            {cuota.saldo_pendiente !== null &&
+                              cuota.saldo_pendiente !== undefined && (
+                                <span>
+                                  Saldo pendiente:{" "}
+                                  {formatearMoneda(cuota.saldo_pendiente)}
+                                </span>
+                              )}
+
                           </div>
 
                           {pagada ? (
@@ -1947,11 +2103,50 @@ export default function AlumnoDashboard() {
                                   : "Pagar"}
                             </button>
                           )}
+
                         </div>
                       );
                     })}
+
                 </div>
               )}
+
+              {/* ACTUALIZACIÓN DEL ACCESO */}
+
+              <div className="dashboard-card">
+
+                <div className="card-header">
+                  <div>
+                    <h3>Estado de acceso académico</h3>
+                    <p>
+                      Comprobá si tus pagos ya fueron acreditados.
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <strong>
+                    {accesoPermitido === true
+                      ? "Acceso habilitado"
+                      : accesoPermitido === false
+                        ? "Acceso restringido"
+                        : "Estado sin verificar"}
+                  </strong>
+                </div>
+
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => void actualizarEstadoPago()}
+                  disabled={loadingAcceso || loadingCuotas}
+                >
+                  {loadingAcceso
+                    ? "Verificando..."
+                    : "Verificar nuevamente"}
+                </button>
+
+              </div>
+
             </div>
           </section>
         )}
@@ -1962,7 +2157,9 @@ export default function AlumnoDashboard() {
 
         {seccion === "perfil" && (
           <section className="dashboard-section">
+
             <div className="dashboard-card">
+
               <div className="card-header">
                 <div>
                   <h3>Mi perfil</h3>
@@ -1971,6 +2168,7 @@ export default function AlumnoDashboard() {
               </div>
 
               <div className="profile-header">
+
                 <div className="profile-avatar">
                   {nombreAlumno.charAt(0).toUpperCase()}
                 </div>
@@ -1979,9 +2177,11 @@ export default function AlumnoDashboard() {
                   <h2>{nombreCompleto}</h2>
                   <p>Alumno</p>
                 </div>
+
               </div>
 
               <div className="student-info-grid">
+
                 <div>
                   <span>Nombre</span>
                   <strong>{nombreAlumno}</strong>
@@ -2003,10 +2203,13 @@ export default function AlumnoDashboard() {
                   <span>ID de alumno</span>
                   <strong>{idAlumno ?? "-"}</strong>
                 </div>
+
               </div>
+
             </div>
           </section>
         )}
+
       </main>
     </div>
   );
