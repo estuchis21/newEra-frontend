@@ -77,37 +77,21 @@ export const obtenerCuotasAlumno = async (
 // VERIFICAR ACCESO DEL ALUMNO
 // ============================================================
 
-export const verificarAccesoAlumno = async (
-  idAlumno: number
-): Promise<EstadoAccesoAlumno> => {
-  if (!Number.isInteger(idAlumno) || idAlumno <= 0) {
-    throw new Error("El ID del alumno no es válido.");
+  export interface AccesoAlumnoResponse {
+    puedeAcceder: boolean;
+    motivo: string | null;
+    mensaje: string | null;
   }
 
-  const response = await api.get(
-    `/cuotas/alumno/${idAlumno}/acceso`
-  );
-
-  const datos = response.data;
-
-  const resultado = datos?.data ?? datos;
-
-  if (typeof resultado?.puedeAcceder !== "boolean") {
-    throw new Error(
-      "El servidor devolvió una respuesta de acceso inválida."
+  export const verificarAccesoAlumno = async (
+    idAlumno: number,
+  ): Promise<AccesoAlumnoResponse> => {
+    const response = await api.get(
+      `/cuotas/alumno/${idAlumno}/acceso`,
     );
-  }
 
-  return {
-    puedeAcceder: resultado.puedeAcceder,
-    motivo: resultado.motivo ?? null,
-    mensaje:
-      resultado.mensaje ??
-      (resultado.puedeAcceder
-        ? "Acceso habilitado."
-        : "Tenés una cuota pendiente."),
+    return response.data;
   };
-};
 
 // ============================================================
 // CREAR CUOTA

@@ -25,7 +25,10 @@ import {
   type Cuota,
 } from "../services/cuotas-pagos.service";
 
-import { obtenerBoletinesAlumno, type Boletin } from "../services/botelines.service";
+import {
+  obtenerBoletinesAlumno,
+  type Boletin,
+} from "../services/botelines.service";
 
 import {
   obtenerPersonasAutorizadas,
@@ -59,6 +62,12 @@ type ErrorBackend = {
     };
   };
   message?: unknown;
+};
+
+type EstadoAccesoAlumno = {
+  puedeAcceder: boolean;
+  motivo?: string | null;
+  mensaje?: string | null;
 };
 
 // =====================================================
@@ -368,8 +377,12 @@ export default function AlumnoDashboard() {
   const [accesoPermitido, setAccesoPermitido] =
     useState<boolean | null>(null);
 
-  const [loadingAcceso, setLoadingAcceso] = useState(false);
+  const [loadingAcceso, setLoadingAcceso] = useState(true);
   const [errorAcceso, setErrorAcceso] = useState("");
+
+  const [mensajeAcceso, setMensajeAcceso] = useState("");
+  const [motivoAcceso, setMotivoAcceso] =
+    useState<string | null>(null);
 
   // =====================================================
   // OBTENER ALUMNO
@@ -416,6 +429,7 @@ export default function AlumnoDashboard() {
 
         setIdAlumno(idObtenido);
         setAlumno(usuario);
+
       } catch (error: unknown) {
         console.error("Error obteniendo alumno:", error);
 
@@ -427,6 +441,7 @@ export default function AlumnoDashboard() {
             )
           );
         }
+
       } finally {
         if (activo) setLoadingAlumno(false);
       }
@@ -440,7 +455,7 @@ export default function AlumnoDashboard() {
   }, [usuario]);
 
   // =====================================================
-  // VERIFICAR ACCESO
+  // VERIFICAR ACCESO ACADÉMICO
   // =====================================================
 
   const cargarEstadoAcceso = async (): Promise<boolean | null> => {
@@ -450,30 +465,49 @@ export default function AlumnoDashboard() {
       setLoadingAcceso(true);
       setErrorAcceso("");
 
-      const resultado = await verificarAccesoAlumno(idAlumno);
+      const resultado: EstadoAccesoAlumno =
+        await verificarAccesoAlumno(idAlumno);
 
-      const permitido = resultado.puedeAcceder === true;
+      if (
+        !resultado ||
+        typeof resultado.puedeAcceder !== "boolean"
+      ) {
+        throw new Error(
+          "El servidor devolvió una respuesta de acceso inválida."
+        );
+      }
+
+      const permitido = resultado.puedeAcceder;
 
       setAccesoPermitido(permitido);
+      setMensajeAcceso(resultado.mensaje ?? "");
+      setMotivoAcceso(resultado.motivo ?? null);
 
       if (!permitido) {
         setSeccion("cuotas");
       }
 
       return permitido;
+
     } catch (error: unknown) {
-      console.error("Error verificando acceso:", error);
+      console.error(
+        "Error verificando acceso académico:",
+        error
+      );
 
       setAccesoPermitido(null);
+      setMensajeAcceso("");
+      setMotivoAcceso(null);
 
       setErrorAcceso(
         obtenerMensajeError(
           error,
-          "No se pudo verificar el estado de tu cuota."
+          "No se pudo verificar el estado de tu acceso académico."
         )
       );
 
       return null;
+
     } finally {
       setLoadingAcceso(false);
     }
@@ -493,6 +527,7 @@ export default function AlumnoDashboard() {
       const datos = await obtenerGruposAlumno(idAlumno);
 
       setGrupos(Array.isArray(datos) ? datos : []);
+
     } catch (error: unknown) {
       console.error("Error obteniendo grupos:", error);
 
@@ -501,6 +536,7 @@ export default function AlumnoDashboard() {
       );
 
       setGrupos([]);
+
     } finally {
       setLoadingGrupos(false);
     }
@@ -522,6 +558,7 @@ export default function AlumnoDashboard() {
           ? datos.filter((grupo) => grupo.activo !== false)
           : []
       );
+
     } catch (error: unknown) {
       console.error("Error obteniendo grupos disponibles:", error);
 
@@ -533,6 +570,7 @@ export default function AlumnoDashboard() {
       );
 
       setGruposDisponibles([]);
+
     } finally {
       setLoadingGruposDisponibles(false);
     }
@@ -552,6 +590,7 @@ export default function AlumnoDashboard() {
       const datos = await obtenerAsistencias(idAlumno);
 
       setAsistencias(Array.isArray(datos) ? datos : []);
+
     } catch (error: unknown) {
       console.error("Error obteniendo asistencias:", error);
 
@@ -563,6 +602,7 @@ export default function AlumnoDashboard() {
       );
 
       setAsistencias([]);
+
     } finally {
       setLoadingAsistencias(false);
     }
@@ -582,6 +622,7 @@ export default function AlumnoDashboard() {
       const datos = await obtenerBoletinesAlumno(idAlumno);
 
       setBoletines(Array.isArray(datos) ? datos : []);
+
     } catch (error: unknown) {
       console.error("Error obteniendo boletines:", error);
 
@@ -593,6 +634,7 @@ export default function AlumnoDashboard() {
       );
 
       setBoletines([]);
+
     } finally {
       setLoadingBoletines(false);
     }
@@ -616,6 +658,7 @@ export default function AlumnoDashboard() {
           ? datos.filter((persona) => persona.activo !== false)
           : []
       );
+
     } catch (error: unknown) {
       console.error("Error obteniendo personas autorizadas:", error);
 
@@ -627,6 +670,7 @@ export default function AlumnoDashboard() {
       );
 
       setPersonasAutorizadas([]);
+
     } finally {
       setLoadingPersonasAutorizadas(false);
     }
@@ -650,6 +694,7 @@ export default function AlumnoDashboard() {
       setHistorialRetiros(
         Array.isArray(datos) ? datos : []
       );
+
     } catch (error: unknown) {
       console.error("Error obteniendo historial:", error);
 
@@ -661,6 +706,7 @@ export default function AlumnoDashboard() {
       );
 
       setHistorialRetiros([]);
+
     } finally {
       setLoadingRetiros(false);
     }
@@ -680,6 +726,7 @@ export default function AlumnoDashboard() {
       const datos = await obtenerCuotasAlumno(idAlumno);
 
       setCuotas(Array.isArray(datos) ? datos : []);
+
     } catch (error: unknown) {
       console.error("Error obteniendo cuotas:", error);
 
@@ -688,6 +735,7 @@ export default function AlumnoDashboard() {
       );
 
       setCuotas([]);
+
     } finally {
       setLoadingCuotas(false);
     }
@@ -712,11 +760,22 @@ export default function AlumnoDashboard() {
         verificarAccesoAlumno(idAlumno),
       ]);
 
+      if (
+        !resultadoAcceso ||
+        typeof resultadoAcceso.puedeAcceder !== "boolean"
+      ) {
+        throw new Error(
+          "No se pudo obtener un estado de acceso válido."
+        );
+      }
+
       setCuotas(Array.isArray(datosCuotas) ? datosCuotas : []);
 
-      const permitido = resultadoAcceso.puedeAcceder === true;
+      const permitido = resultadoAcceso.puedeAcceder;
 
       setAccesoPermitido(permitido);
+      setMensajeAcceso(resultadoAcceso.mensaje ?? "");
+      setMotivoAcceso(resultadoAcceso.motivo ?? null);
 
       if (!permitido) {
         setSeccion("cuotas");
@@ -725,13 +784,17 @@ export default function AlumnoDashboard() {
       await Swal.fire({
         icon: permitido ? "success" : "warning",
         title: permitido
-          ? "Acceso habilitado"
+          ? "¡Acceso habilitado!"
           : "Acceso todavía restringido",
-        text: resultadoAcceso.mensaje,
+        text: permitido
+          ? "Tu acceso académico está habilitado. ¡Ya podés ingresar a tus secciones!"
+          : resultadoAcceso.mensaje ||
+            "Todavía no se registró el pago de la cuota correspondiente al mes actual.",
         confirmButtonText: "Aceptar",
       });
+
     } catch (error: unknown) {
-      console.error("Error actualizando pago:", error);
+      console.error("Error actualizando estado de pago:", error);
 
       const mensaje = obtenerMensajeError(
         error,
@@ -742,9 +805,11 @@ export default function AlumnoDashboard() {
 
       await Swal.fire({
         icon: "error",
-        title: "Error al actualizar",
+        title: "Error al verificar el pago",
         text: mensaje,
+        confirmButtonText: "Aceptar",
       });
+
     } finally {
       setLoadingCuotas(false);
       setLoadingAcceso(false);
@@ -762,6 +827,7 @@ export default function AlumnoDashboard() {
         title: "Cuota inválida",
         text: "No se pudo identificar la cuota.",
       });
+
       return;
     }
 
@@ -787,6 +853,7 @@ export default function AlumnoDashboard() {
       });
 
       await cargarCuotas();
+
     } catch (error: unknown) {
       console.error("Error creando pago:", error);
 
@@ -798,6 +865,7 @@ export default function AlumnoDashboard() {
           "No se pudo iniciar el pago."
         ),
       });
+
     } finally {
       setPagandoCuota(null);
     }
@@ -810,10 +878,95 @@ export default function AlumnoDashboard() {
   useEffect(() => {
     if (!idAlumno) return;
 
-    void cargarEstadoAcceso();
-    void cargarCuotas();
+    let activo = true;
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const cargarDatosIniciales = async () => {
+      try {
+        setLoadingAcceso(true);
+        setErrorAcceso("");
+
+        const resultado: EstadoAccesoAlumno =
+          await verificarAccesoAlumno(idAlumno);
+
+        if (!activo) return;
+
+        if (
+          !resultado ||
+          typeof resultado.puedeAcceder !== "boolean"
+        ) {
+          throw new Error("Respuesta de acceso inválida.");
+        }
+
+        setAccesoPermitido(resultado.puedeAcceder);
+        setMensajeAcceso(resultado.mensaje ?? "");
+        setMotivoAcceso(resultado.motivo ?? null);
+
+        if (!resultado.puedeAcceder) {
+          setSeccion("cuotas");
+        }
+
+      } catch (error: unknown) {
+        console.error(
+          "Error verificando acceso inicial:",
+          error
+        );
+
+        if (!activo) return;
+
+        setAccesoPermitido(null);
+        setMensajeAcceso("");
+        setMotivoAcceso(null);
+
+        setErrorAcceso(
+          obtenerMensajeError(
+            error,
+            "No se pudo verificar tu acceso académico."
+          )
+        );
+
+      } finally {
+        if (activo) {
+          setLoadingAcceso(false);
+        }
+      }
+    };
+
+    const cargarCuotasIniciales = async () => {
+      try {
+        setLoadingCuotas(true);
+        setErrorCuotas("");
+
+        const datos = await obtenerCuotasAlumno(idAlumno);
+
+        if (!activo) return;
+
+        setCuotas(Array.isArray(datos) ? datos : []);
+
+      } catch (error: unknown) {
+        console.error("Error cargando cuotas iniciales:", error);
+
+        if (!activo) return;
+
+        setErrorCuotas(
+          obtenerMensajeError(
+            error,
+            "No se pudieron cargar las cuotas."
+          )
+        );
+
+      } finally {
+        if (activo) {
+          setLoadingCuotas(false);
+        }
+      }
+    };
+
+    void cargarDatosIniciales();
+    void cargarCuotasIniciales();
+
+    return () => {
+      activo = false;
+    };
   }, [idAlumno]);
 
   // =====================================================
@@ -866,6 +1019,7 @@ export default function AlumnoDashboard() {
         title: "Error",
         text: "No se pudo identificar al alumno.",
       });
+
       return;
     }
 
@@ -875,6 +1029,7 @@ export default function AlumnoDashboard() {
         title: "Grupo inválido",
         text: "No se pudo identificar el grupo.",
       });
+
       return;
     }
 
@@ -898,6 +1053,7 @@ export default function AlumnoDashboard() {
         cargarGrupos(),
         cargarGruposDisponibles(),
       ]);
+
     } catch (error: unknown) {
       console.error("Error inscribiendo:", error);
 
@@ -913,6 +1069,7 @@ export default function AlumnoDashboard() {
         title: "No se pudo inscribir",
         text: mensaje,
       });
+
     } finally {
       setInscribiendo(null);
     }
@@ -931,6 +1088,7 @@ export default function AlumnoDashboard() {
         title: "Inscripción inválida",
         text: "No se pudo identificar la inscripción.",
       });
+
       return;
     }
 
@@ -961,6 +1119,7 @@ export default function AlumnoDashboard() {
         cargarGrupos(),
         cargarGruposDisponibles(),
       ]);
+
     } catch (error: unknown) {
       console.error("Error eliminando inscripción:", error);
 
@@ -972,6 +1131,7 @@ export default function AlumnoDashboard() {
           "No se pudo eliminar la inscripción."
         ),
       });
+
     } finally {
       setEliminandoInscripcion(null);
     }
@@ -1012,11 +1172,14 @@ export default function AlumnoDashboard() {
     );
   }
 
-  if (loadingAcceso || (accesoPermitido === null && !errorAcceso)) {
+  if (
+    loadingAcceso ||
+    (accesoPermitido === null && !errorAcceso)
+  ) {
     return (
       <div className="dashboard-loading">
         <div className="loading-spinner" />
-        <p>Verificando el estado de tu cuota...</p>
+        <p>Verificando tu acceso académico...</p>
       </div>
     );
   }
@@ -1199,17 +1362,15 @@ export default function AlumnoDashboard() {
             RESTRICCIÓN DE ACCESO
         ================================================= */}
 
-        {accesoPermitido !== true && (
+        {accesoPermitido === false && !loadingAcceso && (
           <div className="dashboard-warning" role="alert">
 
             <strong>
-              {accesoPermitido === false
-                ? "Acceso académico restringido."
-                : "No se pudo verificar tu acceso académico."}
+              Acceso académico restringido.
             </strong>
 
             <p>
-              {errorAcceso ||
+              {mensajeAcceso ||
                 "Tenés una cuota pendiente. Podés consultar tus cuotas y realizar el pago desde esta sección."}
             </p>
 
@@ -1237,6 +1398,35 @@ export default function AlumnoDashboard() {
             </div>
           </div>
         )}
+
+        {/* =================================================
+            ERROR DE VERIFICACIÓN
+        ================================================= */}
+
+        {accesoPermitido === null &&
+          !loadingAcceso &&
+          errorAcceso && (
+            <div className="dashboard-warning" role="alert">
+
+              <strong>
+                No se pudo verificar tu acceso académico.
+              </strong>
+
+              <p>{errorAcceso}</p>
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void cargarEstadoAcceso()}
+                disabled={loadingAcceso}
+              >
+                {loadingAcceso
+                  ? "Verificando..."
+                  : "Reintentar verificación"}
+              </button>
+
+            </div>
+          )}
 
         {/* =================================================
             INICIO
@@ -2111,7 +2301,7 @@ export default function AlumnoDashboard() {
                 </div>
               )}
 
-              {/* ACTUALIZACIÓN DEL ACCESO */}
+              {/* ESTADO DE ACCESO */}
 
               <div className="dashboard-card">
 
@@ -2133,6 +2323,10 @@ export default function AlumnoDashboard() {
                         : "Estado sin verificar"}
                   </strong>
                 </div>
+
+                {accesoPermitido === false && mensajeAcceso && (
+                  <p>{mensajeAcceso}</p>
+                )}
 
                 <button
                   type="button"
