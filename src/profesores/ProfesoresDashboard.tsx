@@ -3,7 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
-import { obtenerProfesorPorUsuario } from "../services/profesores.service";
+import {
+    obtenerProfesorPorUsuario,
+    obtenerMiCuentaMP,
+    guardarMiAliasMP,
+} from "../services/profesores.service";
 
 import {
     crearGrupo,
@@ -321,6 +325,18 @@ const ProfesorDashboard = () => {
         LiquidacionProfesor[]
     >([]);
 
+    // ========================================================
+// DATOS DE COBRO - MERCADO PAGO
+// ========================================================
+
+    const [aliasMP, setAliasMP] = useState("");
+    const [aliasMPGuardado, setAliasMPGuardado] = useState("");
+
+    const [loadingCuentaMP, setLoadingCuentaMP] = useState(false);
+    const [guardandoAliasMP, setGuardandoAliasMP] = useState(false);
+
+    const [errorCuentaMP, setErrorCuentaMP] = useState("");
+
     const [loadingLiquidaciones, setLoadingLiquidaciones] =
         useState(false);
 
@@ -545,6 +561,89 @@ const ProfesorDashboard = () => {
     // CARGAR LIQUIDACIONES DEL PROFESOR
     // ========================================================
 
+    // ========================================================
+// CARGAR DATOS DE COBRO DEL PROFESOR
+// ========================================================
+
+const cargarCuentaMP = async (): Promise<void> => {
+    try {
+        setLoadingCuentaMP(true);
+        setErrorCuentaMP("");
+
+        const cuenta = await obtenerMiCuentaMP();
+
+        const alias = cuenta?.alias_mp ?? "";
+
+        setAliasMP(alias);
+        setAliasMPGuardado(alias);
+
+    } catch (error: unknown) {
+        console.error("Error obteniendo cuenta de Mercado Pago:", error);
+
+        setErrorCuentaMP(
+            obtenerMensajeError(
+                error,
+                "No se pudieron cargar tus datos de cobro.",
+            ),
+        );
+    } finally {
+        setLoadingCuentaMP(false);
+    }
+};
+
+// ========================================================
+// GUARDAR ALIAS DE MERCADO PAGO
+// ========================================================
+
+    const ejecutarGuardarAliasMP = async (): Promise<void> => {
+        const aliasNormalizado = aliasMP.trim();
+
+        if (!aliasNormalizado) {
+            await mostrarError(
+                "Alias obligatorio",
+                "Ingresá tu alias de Mercado Pago para continuar.",
+            );
+            return;
+        }
+
+        if (aliasNormalizado.length > 100) {
+            await mostrarError(
+                "Alias demasiado largo",
+                "El alias no puede superar los 100 caracteres.",
+            );
+            return;
+        }
+
+        try {
+            setGuardandoAliasMP(true);
+            setErrorCuentaMP("");
+
+            const respuesta = await guardarMiAliasMP(aliasNormalizado);
+
+            const aliasGuardado = respuesta.alias_mp;
+
+            setAliasMP(aliasGuardado);
+            setAliasMPGuardado(aliasGuardado);
+
+            await mostrarExito(
+                "Datos de cobro actualizados",
+                "Tu alias de Mercado Pago se guardó correctamente.",
+            );
+
+        } catch (error: unknown) {
+            console.error("Error guardando alias de Mercado Pago:", error);
+
+            await mostrarError(
+                "No se pudo guardar el alias",
+                obtenerMensajeError(
+                    error,
+                    "Ocurrió un error al guardar tus datos de cobro.",
+                ),
+            );
+        } finally {
+            setGuardandoAliasMP(false);
+        }
+    };
     const cargarLiquidaciones = async (): Promise<void> => {
         if (!idProfesor || !esIdValido(idProfesor)) {
             setLiquidaciones([]);
@@ -1230,6 +1329,16 @@ const ProfesorDashboard = () => {
             void cargarLiquidaciones();
         }
     }, [seccion, idProfesor]);
+
+    // ========================================================
+        // CARGAR DATOS DE COBRO AL ENTRAR EN MI PERFIL
+        // ========================================================
+
+        useEffect(() => {
+            if (seccion === "perfil") {
+                void cargarCuentaMP();
+            }
+        }, [seccion]);
 
     // ========================================================
     // LOADING INICIAL
@@ -2618,8 +2727,16 @@ const ProfesorDashboard = () => {
                 {/* PERFIL */}
                 {/* ================================================== */}
 
+
+{/* ================================================== */}
+{/* PERFIL */}
+{/* ================================================== */}
+
                 {seccion === "perfil" && (
                     <section className="dashboard-section">
+
+                        {/* INFORMACIÓN PERSONAL */}
+
                         <div className="dashboard-card">
                             <div className="card-header">
                                 <div>
@@ -2628,6 +2745,10 @@ const ProfesorDashboard = () => {
                                     </span>
 
                                     <h2>Mi perfil</h2>
+
+                                    <p>
+                                        Consultá tu información personal y tus datos de cobro.
+                                    </p>
                                 </div>
                             </div>
 
@@ -2640,6 +2761,7 @@ const ProfesorDashboard = () => {
                                 </div>
                             ) : (
                                 <div className="profile-info">
+
                                     <div className="profile-row">
                                         <span>Nombre</span>
 
@@ -2683,11 +2805,153 @@ const ProfesorDashboard = () => {
 
                                         <strong>Activo</strong>
                                     </div>
+
                                 </div>
                             )}
                         </div>
+
+                        {/* DATOS DE COBRO */}
+
+                        <div
+                            className="dashboard-card"
+                            style={{ marginTop: "25px" }}
+                        >
+                            <div className="card-header">
+                                <div>
+                                    <span className="section-label">
+                                        MERCADO PAGO
+                                    </span>
+
+                                    <h2>Datos de cobro</h2>
+
+                                    <p>
+                                        Configurá el alias de Mercado Pago donde querés
+                                        recibir tus pagos.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {loadingCuentaMP ? (
+                                <div className="loading">
+                                    Cargando tus datos de cobro...
+                                </div>
+                            ) : (
+                                <>
+                                    {errorCuentaMP && (
+                                        <div
+                                            className="dashboard-warning"
+                                            style={{
+                                                whiteSpace: "pre-line",
+                                                marginBottom: "20px",
+                                            }}
+                                        >
+                                            ⚠️ {errorCuentaMP}
+                                        </div>
+                                    )}
+
+                                    <div className="profile-info">
+
+                                        <div className="profile-row">
+                                            <span>Estado de configuración</span>
+
+                                            <strong>
+                                                {aliasMPGuardado
+                                                    ? "Configurado"
+                                                    : "Pendiente de configurar"}
+                                            </strong>
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                marginTop: "20px",
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "10px",
+                                            }}
+                                        >
+                                            <label
+                                                htmlFor="alias-mercado-pago"
+                                                style={{ fontWeight: 600 }}
+                                            >
+                                                Alias de Mercado Pago
+                                            </label>
+
+                                            <input
+                                                id="alias-mercado-pago"
+                                                type="text"
+                                                value={aliasMP}
+                                                onChange={(e) =>
+                                                    setAliasMP(e.target.value)
+                                                }
+                                                placeholder="Ejemplo: nombre.apellido.mp"
+                                                maxLength={100}
+                                                disabled={guardandoAliasMP}
+                                            />
+
+                                            <small>
+                                                Ingresá el alias de la cuenta donde
+                                                querés recibir tus liquidaciones.
+                                            </small>
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                marginTop: "20px",
+                                                display: "flex",
+                                                flexWrap: "wrap",
+                                                gap: "12px",
+                                            }}
+                                        >
+                                            <button
+                                                className="primary-button"
+                                                onClick={() =>
+                                                    void ejecutarGuardarAliasMP()
+                                                }
+                                                disabled={
+                                                    guardandoAliasMP ||
+                                                    !aliasMP.trim() ||
+                                                    aliasMP.trim() === aliasMPGuardado
+                                                }
+                                            >
+                                                {guardandoAliasMP
+                                                    ? "Guardando..."
+                                                    : aliasMPGuardado
+                                                    ? "Actualizar alias"
+                                                    : "Guardar alias"}
+                                            </button>
+
+                                            {aliasMP !== aliasMPGuardado && (
+                                                <button
+                                                    className="outline-button"
+                                                    onClick={() =>
+                                                        setAliasMP(aliasMPGuardado)
+                                                    }
+                                                    disabled={guardandoAliasMP}
+                                                >
+                                                    Cancelar cambios
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        className="dashboard-warning"
+                                        style={{
+                                            marginTop: "20px",
+                                        }}
+                                    >
+                                        <strong>Importante:</strong> verificá que el alias
+                                        corresponda a tu cuenta de Mercado Pago. Guardar
+                                        este dato no implica que se haya realizado una
+                                        transferencia.
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
                     </section>
                 )}
+
             </main>
         </div>
     );
