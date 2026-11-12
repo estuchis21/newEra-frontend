@@ -789,6 +789,7 @@ export default function AlumnoDashboard() {
         text: permitido
           ? "Tu acceso académico está habilitado. ¡Ya podés ingresar a tus secciones!"
           : resultadoAcceso.mensaje ||
+            resultadoAcceso.motivo ||
             "Todavía no se registró el pago de la cuota correspondiente al mes actual.",
         confirmButtonText: "Aceptar",
       });
@@ -802,6 +803,9 @@ export default function AlumnoDashboard() {
       );
 
       setErrorAcceso(mensaje);
+      setAccesoPermitido(null);
+      setMensajeAcceso("");
+      setMotivoAcceso(null);
 
       await Swal.fire({
         icon: "error",
@@ -1371,6 +1375,7 @@ export default function AlumnoDashboard() {
 
             <p>
               {mensajeAcceso ||
+                motivoAcceso ||
                 "Tenés una cuota pendiente. Podés consultar tus cuotas y realizar el pago desde esta sección."}
             </p>
 
@@ -2324,8 +2329,16 @@ export default function AlumnoDashboard() {
                   </strong>
                 </div>
 
-                {accesoPermitido === false && mensajeAcceso && (
-                  <p>{mensajeAcceso}</p>
+                {accesoPermitido === false && (
+                  <p>
+                    {mensajeAcceso ||
+                      motivoAcceso ||
+                      "No se registró el pago de la cuota correspondiente al mes actual."}
+                  </p>
+                )}
+
+                {accesoPermitido === null && errorAcceso && (
+                  <p role="alert">{errorAcceso}</p>
                 )}
 
                 <button
