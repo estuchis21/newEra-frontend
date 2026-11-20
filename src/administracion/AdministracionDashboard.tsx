@@ -1,6 +1,8 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+
 import {
   obtenerAlumnosAdmin,
   obtenerCuotasPendientesAdmin,
@@ -9,11 +11,19 @@ import {
   obtenerPagosRecientesAdmin,
   type AdminDashboard,
 } from "../services/administracion.service";
+
+import LiquidacionesAdmin from "./LiquidacionesAdmin";
 import "./AdministracionDashboard.css";
 
-type Seccion = "inicio" | "alumnos" | "grupos" | "cuotas" | "pagos";
+type Seccion =
+  | "inicio"
+  | "alumnos"
+  | "grupos"
+  | "cuotas"
+  | "pagos"
+  | "liquidaciones";
 
-const dinero = (valor: number) =>
+const dinero = (valor: number | string | null | undefined) =>
   new Intl.NumberFormat("es-AR", {
     style: "currency",
     currency: "ARS",
@@ -40,6 +50,7 @@ export default function AdministracionDashboard() {
 
     try {
       setCargando(true);
+
       const [d, a, g, c, p] = await Promise.all([
         obtenerDashboardAdmin(idUsuario),
         obtenerAlumnosAdmin(idUsuario),
@@ -55,12 +66,14 @@ export default function AdministracionDashboard() {
       setPagos(Array.isArray(p) ? p : []);
     } catch (error) {
       console.error(error);
+
       await Swal.fire({
         icon: "error",
         title: "Acceso denegado",
         text: "No se pudo cargar el panel administrativo.",
         confirmButtonText: "Volver",
       });
+
       navigate("/");
     } finally {
       setCargando(false);
@@ -77,6 +90,7 @@ export default function AdministracionDashboard() {
 
     try {
       const parsed = JSON.parse(guardado);
+
       setUsuario(parsed);
 
       if (Number(parsed.id_rol) !== 1) {
@@ -89,11 +103,14 @@ export default function AdministracionDashboard() {
   }, [navigate]);
 
   useEffect(() => {
-    if (idUsuario) cargar();
+    if (idUsuario) {
+      void cargar();
+    }
   }, [idUsuario]);
 
   const alumnosFiltrados = useMemo(() => {
     const termino = buscar.trim().toLowerCase();
+
     if (!termino) return alumnos;
 
     return alumnos.filter((alumno) =>
@@ -110,8 +127,21 @@ export default function AdministracionDashboard() {
   };
 
   if (cargando && !dashboard) {
-    return <div className="admin-loading">Cargando panel administrativo...</div>;
+    return (
+      <div className="admin-loading">
+        Cargando panel administrativo...
+      </div>
+    );
   }
+
+  const titulos: Record<Seccion, string> = {
+    inicio: "Resumen general",
+    alumnos: "Alumnos",
+    grupos: "Grupos",
+    cuotas: "Cuotas pendientes",
+    pagos: "Pagos recientes",
+    liquidaciones: "Liquidaciones de profesores",
+  };
 
   return (
     <div className="admin-dashboard">
@@ -119,25 +149,53 @@ export default function AdministracionDashboard() {
         <div>
           <span className="admin-kicker">NEW ERA ACADEMY</span>
           <h1>Administración</h1>
-          <p>{usuario?.nombre} {usuario?.apellido}</p>
+          <p>
+            {usuario?.nombre} {usuario?.apellido}
+          </p>
         </div>
 
         <nav>
-          {[
-            ["inicio", "Resumen"],
-            ["alumnos", "Alumnos"],
-            ["grupos", "Grupos"],
-            ["cuotas", "Cuotas"],
-            ["pagos", "Pagos"],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              className={seccion === key ? "active" : ""}
-              onClick={() => setSeccion(key as Seccion)}
-            >
-              {label}
-            </button>
-          ))}
+          <button
+            className={seccion === "inicio" ? "active" : ""}
+            onClick={() => setSeccion("inicio")}
+          >
+            Resumen
+          </button>
+
+          <button
+            className={seccion === "alumnos" ? "active" : ""}
+            onClick={() => setSeccion("alumnos")}
+          >
+            Alumnos
+          </button>
+
+          <button
+            className={seccion === "grupos" ? "active" : ""}
+            onClick={() => setSeccion("grupos")}
+          >
+            Grupos
+          </button>
+
+          <button
+            className={seccion === "cuotas" ? "active" : ""}
+            onClick={() => setSeccion("cuotas")}
+          >
+            Cuotas
+          </button>
+
+          <button
+            className={seccion === "pagos" ? "active" : ""}
+            onClick={() => setSeccion("pagos")}
+          >
+            Pagos
+          </button>
+
+          <button
+            className={seccion === "liquidaciones" ? "active" : ""}
+            onClick={() => setSeccion("liquidaciones")}
+          >
+            Liquidaciones
+          </button>
         </nav>
 
         <button className="admin-logout" onClick={cerrarSesion}>
@@ -149,40 +207,74 @@ export default function AdministracionDashboard() {
         <header className="admin-header">
           <div>
             <span className="admin-kicker">PANEL DE CONTROL</span>
-            <h2>
-              {seccion === "inicio" && "Resumen general"}
-              {seccion === "alumnos" && "Alumnos"}
-              {seccion === "grupos" && "Grupos"}
-              {seccion === "cuotas" && "Cuotas pendientes"}
-              {seccion === "pagos" && "Pagos recientes"}
-            </h2>
+            <h2>{titulos[seccion]}</h2>
           </div>
-          <button className="admin-refresh" onClick={cargar}>
-            Actualizar
-          </button>
+
+          {seccion !== "liquidaciones" && (
+            <button
+              className="admin-refresh"
+              onClick={() => void cargar()}
+              disabled={cargando}
+            >
+              {cargando ? "Actualizando..." : "Actualizar"}
+            </button>
+          )}
         </header>
 
         {seccion === "inicio" && dashboard && (
           <>
             <section className="admin-stats">
-              <article><span>Alumnos</span><strong>{dashboard.alumnos}</strong></article>
-              <article><span>Profesores</span><strong>{dashboard.profesores}</strong></article>
-              <article><span>Grupos activos</span><strong>{dashboard.grupos}</strong></article>
-              <article><span>Clases hoy</span><strong>{dashboard.clasesHoy}</strong></article>
-              <article><span>Cuotas pendientes</span><strong>{dashboard.cuotasPendientes}</strong></article>
-              <article><span>Deuda registrada</span><strong>{dinero(dashboard.montoPendiente)}</strong></article>
-              <article><span>Pagos aprobados</span><strong>{dashboard.pagosAprobados}</strong></article>
-              <article><span>Ingresos registrados</span><strong>{dinero(dashboard.ingresos)}</strong></article>
+              <article>
+                <span>Alumnos</span>
+                <strong>{dashboard.alumnos}</strong>
+              </article>
+
+              <article>
+                <span>Profesores</span>
+                <strong>{dashboard.profesores}</strong>
+              </article>
+
+              <article>
+                <span>Grupos activos</span>
+                <strong>{dashboard.grupos}</strong>
+              </article>
+
+              <article>
+                <span>Clases hoy</span>
+                <strong>{dashboard.clasesHoy}</strong>
+              </article>
+
+              <article>
+                <span>Cuotas pendientes</span>
+                <strong>{dashboard.cuotasPendientes}</strong>
+              </article>
+
+              <article>
+                <span>Deuda registrada</span>
+                <strong>{dinero(dashboard.montoPendiente)}</strong>
+              </article>
+
+              <article>
+                <span>Pagos aprobados</span>
+                <strong>{dashboard.pagosAprobados}</strong>
+              </article>
+
+              <article>
+                <span>Ingresos registrados</span>
+                <strong>{dinero(dashboard.ingresos)}</strong>
+              </article>
             </section>
 
             <section className="admin-grid-two">
               <div className="admin-card">
                 <span className="admin-kicker">ASISTENCIA</span>
                 <h3>Asistencia acumulada</h3>
+
                 <div className="admin-progress-row">
                   <span>Presentes</span>
                   <strong>{dashboard.asistencia.presentes}</strong>
                 </div>
+
                 <div className="admin-progress-row">
                   <span>Ausentes</span>
                   <strong>{dashboard.asistencia.ausentes}</strong>
@@ -192,11 +284,27 @@ export default function AdministracionDashboard() {
               <div className="admin-card">
                 <span className="admin-kicker">OPERACIÓN</span>
                 <h3>Acciones rápidas</h3>
+
                 <div className="admin-actions">
-                  <button onClick={() => setSeccion("alumnos")}>Buscar alumno</button>
-                  <button onClick={() => setSeccion("grupos")}>Ver ocupación</button>
-                  <button onClick={() => setSeccion("cuotas")}>Revisar deuda</button>
-                  <button onClick={() => setSeccion("pagos")}>Ver pagos</button>
+                  <button onClick={() => setSeccion("alumnos")}>
+                    Buscar alumno
+                  </button>
+
+                  <button onClick={() => setSeccion("grupos")}>
+                    Ver ocupación
+                  </button>
+
+                  <button onClick={() => setSeccion("cuotas")}>
+                    Revisar deuda
+                  </button>
+
+                  <button onClick={() => setSeccion("pagos")}>
+                    Ver pagos
+                  </button>
+
+                  <button onClick={() => setSeccion("liquidaciones")}>
+                    Gestionar liquidaciones
+                  </button>
                 </div>
               </div>
             </section>
@@ -212,6 +320,7 @@ export default function AdministracionDashboard() {
                 placeholder="Buscar por nombre, email o DNI..."
               />
             </div>
+
             <div className="admin-table-wrap">
               <table>
                 <thead>
@@ -223,10 +332,13 @@ export default function AdministracionDashboard() {
                     <th>Créditos aprox.</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {alumnosFiltrados.map((alumno) => (
                     <tr key={alumno.id_alumno}>
-                      <td>{alumno.nombre} {alumno.apellido}</td>
+                      <td>
+                        {alumno.nombre} {alumno.apellido}
+                      </td>
                       <td>{alumno.email}</td>
                       <td>{alumno.dni || "-"}</td>
                       <td>{alumno.grupos_activos}</td>
@@ -235,7 +347,12 @@ export default function AdministracionDashboard() {
                   ))}
                 </tbody>
               </table>
-              {alumnosFiltrados.length === 0 && <p className="admin-empty">No hay alumnos para mostrar.</p>}
+
+              {alumnosFiltrados.length === 0 && (
+                <p className="admin-empty">
+                  No hay alumnos para mostrar.
+                </p>
+              )}
             </div>
           </section>
         )}
@@ -253,18 +370,27 @@ export default function AdministracionDashboard() {
                     <th>Estado</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {grupos.map((grupo) => (
                     <tr key={grupo.id_grupo}>
                       <td>{grupo.disciplina}</td>
                       <td>{grupo.nivel}</td>
                       <td>{grupo.profesor}</td>
-                      <td>{grupo.alumnos} / {grupo.cupo_max}</td>
+                      <td>
+                        {grupo.alumnos} / {grupo.cupo_max}
+                      </td>
                       <td>{grupo.activo ? "Activo" : "Inactivo"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+
+              {grupos.length === 0 && (
+                <p className="admin-empty">
+                  No hay grupos para mostrar.
+                </p>
+              )}
             </div>
           </section>
         )}
@@ -282,19 +408,37 @@ export default function AdministracionDashboard() {
                     <th>Estado</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {cuotas.map((cuota) => (
                     <tr key={cuota.id_cuota}>
-                      <td>{cuota.nombre} {cuota.apellido}</td>
+                      <td>
+                        {cuota.nombre} {cuota.apellido}
+                      </td>
                       <td>{cuota.mes_anio}</td>
-                      <td>{new Date(cuota.vencimiento).toLocaleDateString("es-AR")}</td>
+                      <td>
+                        {cuota.vencimiento
+                          ? new Date(cuota.vencimiento).toLocaleDateString(
+                              "es-AR",
+                            )
+                          : "-"}
+                      </td>
                       <td>{dinero(cuota.monto)}</td>
-                      <td><span className="admin-badge pending">{cuota.estado}</span></td>
+                      <td>
+                        <span className="admin-badge pending">
+                          {cuota.estado}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {cuotas.length === 0 && <p className="admin-empty">No hay cuotas pendientes.</p>}
+
+              {cuotas.length === 0 && (
+                <p className="admin-empty">
+                  No hay cuotas pendientes.
+                </p>
+              )}
             </div>
           </section>
         )}
@@ -312,21 +456,37 @@ export default function AdministracionDashboard() {
                     <th>Mercado Pago</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {pagos.map((pago) => (
                     <tr key={pago.id_pago}>
-                      <td>{pago.nombre} {pago.apellido}</td>
+                      <td>
+                        {pago.nombre} {pago.apellido}
+                      </td>
                       <td>{dinero(pago.monto)}</td>
-                      <td>{pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleString("es-AR") : "-"}</td>
+                      <td>
+                        {pago.fecha_pago
+                          ? new Date(pago.fecha_pago).toLocaleString("es-AR")
+                          : "-"}
+                      </td>
                       <td>{pago.metodo_pago || "-"}</td>
                       <td>{pago.id_mercado_pago || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              {pagos.length === 0 && <p className="admin-empty">Todavía no hay pagos registrados.</p>}
+
+              {pagos.length === 0 && (
+                <p className="admin-empty">
+                  Todavía no hay pagos registrados.
+                </p>
+              )}
             </div>
           </section>
+        )}
+
+        {seccion === "liquidaciones" && (
+          <LiquidacionesAdmin />
         )}
       </main>
     </div>
